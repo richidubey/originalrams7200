@@ -58,14 +58,7 @@ void S7200HWService::handleConsumerConfigError(const std::string& ip, int code, 
 
 void S7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-
-  if(var.compare("touchConError") == 0) {
-    Common::Logger::globalInfo(Common::Logger::L1, "Touch Conn Error Updated");
-    insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload); 
-    return;
-  }
- 
-  if(ip.compare("VERSION"))
+  if(ip.compare("VERSION") || var.compare("touchConError") )
     //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
     insertInDataToDp(std::move(CharString((ip + "$" + var + "$" + pollTime).c_str())), payload);
   else 
@@ -112,7 +105,7 @@ void S7200HWService::handleNewIPAddress(const std::string& ip)
             Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
             handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status\n\n");
+            Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
             bool touch_panel_conn_error = true;
             TS7DataItem TouchPan_Conn_Stat_item = S7200LibFacade::S7200TS7DataItemFromAddress("touchConnError");
             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));

@@ -418,7 +418,7 @@ void S7200LibFacade::S7200ReadWriteMaxN(std::vector <std::pair<std::string, void
                 //printf("Read/Write %d items\n", to_send);
 
                 if(rorw == 0) {
-                    Common::Logger::globalInfo(Common::Logger::L2, "Read OK");
+                    Common::Logger::globalInfo(Common::Logger::L3, "Read OK");
                 
                     for(uint i = last_index; i < last_index + to_send; i++) {
                         int a;
@@ -471,8 +471,8 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
 
     TS7DataItem TouchPan_Conn_Stat_item;
 
-    Common::Logger::globalInfo(Common::Logger::L1, "Connecting to ip", ip);
-    Common::Logger::globalInfo(Common::Logger::L1, "on port", std::to_string(port).c_str()); 
+    Common::Logger::globalInfo(Common::Logger::L2, "Connecting to ip", ip);
+    Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
 
     int socket_desc = -1;
     bool switch_to_event;
@@ -500,7 +500,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
     //Always ready and trying to connect	
     while(1) { 
 
-        Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status\n\n");
+        Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
         touch_panel_conn_error = true;
         TouchPan_Conn_Stat_item = S7200TS7DataItemFromAddress("touchConnError");
         memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -531,8 +531,6 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
     
         Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::Socket created\n");	
 
-        Common::Logger::globalInfo(Common::Logger::L1, "Trying to connect to Touch Panel ...");
-
         //Setting socket non blocking for the connect call.
         int socket_desc_flagbf;
         
@@ -554,8 +552,6 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 // Start connecting (asynchronously)
                 do {
-                    Common::Logger::globalInfo(Common::Logger::L1, "FSThread : Trying to connect in non blocking mode");
-
                     if ( connect(socket_desc, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0 ) {
                         // Did connect return an error? If so, we'll try again after some time.
                         if ((errno != EWOULDBLOCK) && (errno != EINPROGRESS)) {
@@ -649,7 +645,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
         if( !nonblock ) {
             //Could not set the socket as non blocking. Continue with blocking connect
             if( connect(socket_desc, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0 ) {
-                Common::Logger::globalInfo(Common::Logger::L1, "Error in connecting to Touch Panel\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "Error in connecting (blocking) to Touch Panel\n");
                 connect_try_count++;
                 close(socket_desc);
 
@@ -693,21 +689,15 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
         
         setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
         
-        Common::Logger::globalInfo(Common::Logger::L1, "Connected to Touch Panel\n\n");
-
-        touch_panel_conn_error = false;
-        Common::Logger::globalInfo(Common::Logger::L1, "Writing false to DP for touch panel connection error\n\n");
-        TouchPan_Conn_Stat_item = S7200TS7DataItemFromAddress("touchConnError");
-        memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
-        this->_consumeCB(_ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+        Common::Logger::globalInfo(Common::Logger::L1, "Connected to Touch Panel");
 
         connect_try_count = 0;
 
         while(1) { //Connected to client - keep waiting for either User message or Logfile message
             int bufsize = 1024;
-            char buffer[bufsize], subbuffer[8];
+            char buffer[bufsize], subbuffer[12];
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Writing false to DP for touch panel connection erorr status\n\n");
+            Common::Logger::globalInfo(Common::Logger::L1, "Writing false to DP for touch panel connection erorr status");
             touch_panel_conn_error = false;
             TouchPan_Conn_Stat_item = S7200TS7DataItemFromAddress("touchConnError");
             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -719,7 +709,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                 if(stopCurrentFSThread) {
                     Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread asked to stop. Exiting ...");
                     
-                    Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status\n\n");
+                    Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
                     touch_panel_conn_error = true;
                     TouchPan_Conn_Stat_item = S7200TS7DataItemFromAddress("touchConnError");
                     memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -733,7 +723,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                 }
             }
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Waiting upto 2 minutes to receive number for handshake \n");
+            Common::Logger::globalInfo(Common::Logger::L2, "Waiting upto 2 minutes to receive number for handshake \n");
             memset(buffer, 0, sizeof(buffer));
 
             if( recv(socket_desc, buffer, bufsize, 0) <= 0 ) {
@@ -743,11 +733,11 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
             }
         
             int rand_rcv = atoi(buffer);
-            Common::Logger::globalInfo(Common::Logger::L1, "Received number from client", std::to_string(rand_rcv).c_str());
+            Common::Logger::globalInfo(Common::Logger::L2, "Received number from client", std::to_string(rand_rcv).c_str());
 
             sprintf(buffer, "%d",rand_rcv+1);
         
-            Common::Logger::globalInfo(Common::Logger::L1, "Sending number to client", buffer);
+            Common::Logger::globalInfo(Common::Logger::L2, "Sending received number + 1 to client for hanshake", buffer);
             
             if( send(socket_desc, buffer, strlen(buffer), 0) < 0 ) {
                 Common::Logger::globalInfo(Common::Logger::L1, "Sending of rand + 1 for connection initiation failed\n");
@@ -756,7 +746,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                 break;
             }
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Number Sent");
+            Common::Logger::globalInfo(Common::Logger::L2, "Number Sent");
 
             Common::Logger::globalInfo(Common::Logger::L1, "Waiting upto 2 minutes to receive message for treatment\n");
             memset(buffer, 0, sizeof(buffer));
@@ -786,7 +776,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                 sock_err = false;
 
                 while(fgets(buffer, sizeof(buffer), fpUser)) {
-                    Common::Logger::globalInfo(Common::Logger::L1, "Line read:\n %s",buffer);
+                    Common::Logger::globalInfo(Common::Logger::L2, "Line read:\n %s",buffer);
 
                     iRetSend = send(socket_desc, buffer, strlen(buffer), 0);
                     
@@ -804,8 +794,8 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                     break; 
                 }
 
-                sprintf(buffer, "##HSE##\n\n");
-                Common::Logger::globalInfo(Common::Logger::L1, "Sending final marker ##HSE## for User File\n");
+                sprintf(buffer, "##DRV_ACK##\n\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "Sending final marker ##DRV_ACK## for User File\n");
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0);
                 
                 if(iRetSend <= 0) {
@@ -823,7 +813,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 switch_to_event = false;
 
-                sprintf(buffer, "##HSE##\n\n");
+                sprintf(buffer, "##DRV_ACK##\n\n");
                     
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -857,7 +847,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                     if(strcmp(buffer, "Event") == 0) { //Start Receiving Event files
                         switch_to_event = true;
 
-                        sprintf(buffer, "##HSE##\n\n");
+                        sprintf(buffer, "##DRV_ACK##\n\n");
                         iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
                         if(iRetSend <= 0) {
@@ -872,13 +862,13 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                         continue;
                     }
 
-                    if(strlen(buffer) >= 7)
-                        memcpy( subbuffer, &buffer[strlen(buffer) - 7], 7);
+                    if(strlen(buffer) >=11)
+                        memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
 
-                    subbuffer[7] = '\0';
+                    subbuffer[11] = '\0';
                     
                     
-                    if( strcmp("**HSE**", subbuffer) == 0 ) {
+                    if( strcmp("##PNL_ACK##", subbuffer) == 0 ) {
                         Common::Logger::globalInfo(Common::Logger::L1, "LogFile treatment successfully finished.\n");
                         break;
                     }
@@ -908,7 +898,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
 
-                    sprintf(buffer, "##HSE##\n\n");
+                    sprintf(buffer, "##DRV_ACK##\n\n");
                     
                     iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -923,72 +913,72 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
                     
-                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file name reception: ##HSE##");
+                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file name reception: ##DRV_ACK##");
 
-                    Common::Logger::globalInfo(Common::Logger::L1, "File content:\n\n");
+                    Common::Logger::globalInfo(Common::Logger::L2, "File content:\n\n");
                     
                     subbuffer[0] = '0';
                     count = 0;
 
                     sock_err = false;
                     
-                    while( strcmp("**HSE**", subbuffer) != 0 ) {
-                    count++;
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Inside loop\n");
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Count is "<<count);	
-                    //Common::Logger::globalInfo(Common::Logger::L1, "After memset of buffer to 0\n");
-                    memset(buffer, 0, sizeof(buffer));
+                    while( strcmp("##PNL_ACK##", subbuffer) != 0 ) {
+                        count++;
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Inside loop\n");
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Count is "<<count);	
+                        //Common::Logger::globalInfo(Common::Logger::L1, "After memset of buffer to 0\n");
+                        memset(buffer, 0, sizeof(buffer));
 
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Before receive on the socket\n");
-                    if( recv(socket_desc, buffer, 2048, 0) <= 0) {
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Before receive on the socket\n");
+                        if( recv(socket_desc, buffer, 2048, 0) <= 0) {
+                            
+                            Common::Logger::globalInfo(Common::Logger::L1, "Error in socket connection.\n");
+                            close(socket_desc);
+                            sock_err = true;
+                            file.close();
+                            //fclose(fpLog); 
+                            remove(nFile);
+                            break;
+                        }
                         
-                        Common::Logger::globalInfo(Common::Logger::L1, "Error in socket connection.\n");
-                        close(socket_desc);
-                        sock_err = true;
-                        file.close();
-                        //fclose(fpLog); 
-                        remove(nFile);
-                        break;
-                    }
-                    
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Packet number "<<count<<" is : "<<buffer;
-                    
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Before next packet print\n");
-                    Common::Logger::globalInfo(Common::Logger::L1, "Packet number ", std::to_string(count).c_str());
-                    Common::Logger::globalInfo(Common::Logger::L1, " is : ", buffer);
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Packet number "<<count<<" is : "<<buffer;
+                        
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Before next packet print\n");
+                        Common::Logger::globalInfo(Common::Logger::L2, "Packet number ", std::to_string(count).c_str());
+                        Common::Logger::globalInfo(Common::Logger::L2, " is : ", buffer);
 
-                    //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
+                        //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
 
-                    if(strlen(buffer) >= 7)
-                        memcpy( subbuffer, &buffer[strlen(buffer) - 7], 7);
+                        if(strlen(buffer) >= 11)
+                            memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
 
-                    subbuffer[7] = '\0';
+                        subbuffer[11] = '\0';
 
-                    //Common::Logger::globalInfo(Common::Logger::L1, "After packet print\n");
-                    
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is %s \n",subbuffer);
-                    if( strcmp("**HSE**", subbuffer) != 0 ) {
-                        //fprintf( fpLog, "%s", buffer);
-                        file<<buffer;	
-                        //Common::Logger::globalInfo(Common::Logger::L1, "Written to file\n");
-                    } else {
-                        buffer[strlen(buffer) - 7] = '\0';
-                        file<<buffer;	
-                        //fprintf( fpLog, "%s", buffer);
-                    } 		
-                    //Common::Logger::globalInfo(Common::Logger::L1, "After subbuffer comparison\n");
-                    //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is : "<<subbuffer));
-                    /* 
-                    if(count == 15) {
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[0] = "<<buffer[0]);
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[1] = "<<buffer[1]); 
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[2] = "<<buffer[2]); 
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[3] = "<<buffer[3]);
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[4] = "<<buffer[4]);
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[5] = "<<buffer[5]);
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[6] = "<<buffer[6]);
-                        Common::Logger::globalInfo(Common::Logger::L1, "buffer[7] = "<<buffer[7]); 
-                    }*/
+                        //Common::Logger::globalInfo(Common::Logger::L1, "After packet print\n");
+                        
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is %s \n",subbuffer);
+                        if( strcmp("##PNL_ACK##", subbuffer) != 0 ) {
+                            //fprintf( fpLog, "%s", buffer);
+                            file<<buffer;	
+                            //Common::Logger::globalInfo(Common::Logger::L1, "Written to file\n");
+                        } else {
+                            buffer[strlen(buffer) - 7] = '\0';
+                            file<<buffer;	
+                            //fprintf( fpLog, "%s", buffer);
+                        } 		
+                        //Common::Logger::globalInfo(Common::Logger::L1, "After subbuffer comparison\n");
+                        //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is : "<<subbuffer));
+                        /* 
+                        if(count == 15) {
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[0] = "<<buffer[0]);
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[1] = "<<buffer[1]); 
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[2] = "<<buffer[2]); 
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[3] = "<<buffer[3]);
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[4] = "<<buffer[4]);
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[5] = "<<buffer[5]);
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[6] = "<<buffer[6]);
+                            Common::Logger::globalInfo(Common::Logger::L1, "buffer[7] = "<<buffer[7]); 
+                        }*/
                     }	
                     
                     if(sock_err) {
@@ -997,7 +987,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
 
                     Common::Logger::globalInfo(Common::Logger::L1, "File reading completed");
                 
-                    sprintf(buffer, "##HSE##\n\n");
+                    sprintf(buffer, "##DRV_ACK##\n\n");
                     
                     iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -1010,7 +1000,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
                     
-                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file receipt: **HSE**");
+                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file receipt: ##DRV_ACK##");
                     
                     file.close();
 
@@ -1020,7 +1010,7 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                         if(stopCurrentFSThread) {
                             Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread asked to stop. Exiting ...");
 
-                            Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status\n\n");
+                            Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
                             touch_panel_conn_error = true;
                             TouchPan_Conn_Stat_item = S7200TS7DataItemFromAddress("touchConnError");
                             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));

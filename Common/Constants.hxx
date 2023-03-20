@@ -108,7 +108,7 @@ namespace Common{
     }
 
     inline void Constants::setLocalTsapPort(uint32_t port){
-        printf("Setting TSAP_PORT_LOCAL=" + CharString(port) + "\n");
+        //printf("Setting TSAP_PORT_LOCAL=" + CharString(port) + "\n");
         TSAP_PORT_LOCAL = port;
     }
 
@@ -117,7 +117,7 @@ namespace Common{
     }
 
     inline void Constants::setRemoteTsapPort(uint32_t port){
-        printf("Setting TSAP_PORT_REMOTE=" + CharString(port) + "\n");
+        //printf("Setting TSAP_PORT_REMOTE=" + CharString(port) + "\n");
         TSAP_PORT_REMOTE = port;
     }
 
@@ -127,7 +127,7 @@ namespace Common{
 
     inline void Constants::setPollingInterval(size_t pollingInterval)
     {
-        printf("Setting POLLING_INTERVAL=" + CharString(pollingInterval) + "\n");
+        //printf("Setting POLLING_INTERVAL=" + CharString(pollingInterval) + "\n");
         POLLING_INTERVAL = pollingInterval;
     }
 
@@ -138,7 +138,7 @@ namespace Common{
 
     inline void Constants::setUserFilePath(std::string userFilePath) 
     { 
-        printf("Setting USERFILE_PATH= %s\n", userFilePath.c_str());
+        //printf("Setting USERFILE_PATH= %s\n", userFilePath.c_str());
         USERFILE_PATH = userFilePath;
     }
     
@@ -153,7 +153,7 @@ namespace Common{
 
     inline void Constants::setMeasFilePath(std::string measFilePath) 
     {
-        printf("Setting MEASUREMENT_PATH= %s\n", measFilePath.c_str());
+        //printf("Setting MEASUREMENT_PATH= %s\n", measFilePath.c_str());
         MEASUREMENT_PATH = measFilePath;
 
     }
@@ -164,7 +164,7 @@ namespace Common{
 
     inline void Constants::setEventFilePath(std::string eventFilePath) 
     {
-        printf("Setting EVENT_PATH= %s\n", eventFilePath.c_str());
+        //printf("Setting EVENT_PATH= %s\n", eventFilePath.c_str());
         EVENT_PATH = eventFilePath;
     }
 
