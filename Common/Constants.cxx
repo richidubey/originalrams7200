@@ -19,7 +19,7 @@
 
 namespace Common {
 
-    std::string Constants::drv_name = "S7200";
+    std::string Constants::drv_name = "RAMS7200";
     uint32_t Constants::DRV_NO = 0;                         // Read from PVSS on driver startup
     uint32_t Constants::TSAP_PORT_LOCAL = 0;                // Read from PVSS on driver startup from config file
     uint32_t Constants::TSAP_PORT_REMOTE = 0;               // Read from PVSS on driver startupconfig file
