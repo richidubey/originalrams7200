@@ -15,6 +15,7 @@
 #include <csignal>
 
 #include "S7200LibFacade.hxx"
+#include "S7200Resources.hxx"
 #include "Common/Constants.hxx"
 #include "Common/Logger.hxx"
 #include <arpa/inet.h>
@@ -463,11 +464,29 @@ int S7200LibFacade::getByteSizeFromAddress(std::string S7200Address)
 void S7200LibFacade::FileSharingTask(char* ip, int port) {
     
     FSThreadRunning = true;
-    Common::Logger::globalInfo(Common::Logger::L1,"File Sharing Thread::Inside thread, Touch Panel IP is", ip);
+    Common::Logger::globalInfo(Common::Logger::L1,"File Sharing Thread::Inside thread, Requested Touch Panel IP is", ip);
 
     int iRetSend, iRetRecv;
     FILE *fpUser;
     int count;
+    
+    while(S7200Resources::getDisableCommands()){
+         // If the Server is Passive (for redundant systems)
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        {
+            std::unique_lock<std::mutex> lck(mutex_);
+            
+            if(stopCurrentFSThread) {
+                Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...");
+                FSThreadRunning = false;
+                CV_SwitchFSThread.notify_one();
+                delete[] ip;
+                return;
+            }
+        }
+
+    };
 
     TS7DataItem TouchPan_Conn_Stat_item;
 

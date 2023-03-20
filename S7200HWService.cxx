@@ -13,6 +13,7 @@
  **/
 
 #include <S7200HWService.hxx>
+#include "S7200Resources.hxx"
 
 #include <DrvManager.hxx>
 #include <PVSSMacros.hxx>     // DEBUG macros
@@ -58,11 +59,11 @@ void S7200HWService::handleConsumerConfigError(const std::string& ip, int code, 
 
 void S7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-  if(ip.compare("VERSION") || var.compare("touchConError") )
+  if( (ip.compare("VERSION") == 0) || (var.compare("touchConError") == 0) )
+    insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
+  else 
     //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
     insertInDataToDp(std::move(CharString((ip + "$" + var + "$" + pollTime).c_str())), payload);
-  else 
-    insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
 }
 
 void S7200HWService::handleNewIPAddress(const std::string& ip)
@@ -113,38 +114,45 @@ void S7200HWService::handleNewIPAddress(const std::string& ip)
 
             while(_consumerRun && DisconnectsPerIP[ip] < 20 && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip))
             {
-              Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Polling");
-              auto cycleInterval = std::chrono::seconds(1);
-              auto start = std::chrono::steady_clock::now();
-
-              auto vars = static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->getS7200Addresses();
-              if(vars.find(ip) != vars.end()){
-                  //First do all the writes for this IP, then the reads
-                  aFacade.write(writeQueueForIP[ip]);
-                  writeQueueForIP[ip].clear();
-                  aFacade.Poll(vars[ip], start);                         
-              }
-              auto end = std::chrono::steady_clock::now();
-              auto time_elapsed = end - start;
-              
-              // If we still have time left, then sleep
-              if(time_elapsed < cycleInterval)
-                std::this_thread::sleep_for(cycleInterval- time_elapsed);
-
-              if(aFacade.readFailures > 5) {
-                Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "More than 5 read failures, Disconnecting");
+              if(!S7200Resources::getDisableCommands()) {
+                // The Server is Active (for redundant systems)
                 
-                do {
-                  //Disconnect and try to connect again.
-                  aFacade.Disconnect();
-                  aFacade.Reconnect();
+                Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Polling");
+                auto cycleInterval = std::chrono::seconds(1);
+                auto start = std::chrono::steady_clock::now();
 
-                  if(!aFacade.isInitialized()) {
-                    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds");
-                    std::this_thread::sleep_for(std::chrono::seconds(5));
-                  }
-                } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip));
-                aFacade.readFailures = 0;
+                auto vars = static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->getS7200Addresses();
+                if(vars.find(ip) != vars.end()){
+                    //First do all the writes for this IP, then the reads
+                    aFacade.write(writeQueueForIP[ip]);
+                    writeQueueForIP[ip].clear();
+                    aFacade.Poll(vars[ip], start);                         
+                }
+                auto end = std::chrono::steady_clock::now();
+                auto time_elapsed = end - start;
+                
+                // If we still have time left, then sleep
+                if(time_elapsed < cycleInterval)
+                  std::this_thread::sleep_for(cycleInterval- time_elapsed);
+
+                if(aFacade.readFailures > 5) {
+                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "More than 5 read failures, Disconnecting");
+                  
+                  do {
+                    //Disconnect and try to connect again.
+                    aFacade.Disconnect();
+                    aFacade.Reconnect();
+
+                    if(!aFacade.isInitialized()) {
+                      Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds");
+                      std::this_thread::sleep_for(std::chrono::seconds(5));
+                    }
+                  } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip));
+                  aFacade.readFailures = 0;
+                }
+              } else {
+                // The Server is Passive (for redundant systems)
+                std::this_thread::sleep_for(std::chrono::seconds(1));
               }
             }
           }
