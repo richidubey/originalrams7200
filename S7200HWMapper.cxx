@@ -166,7 +166,7 @@ void S7200HWMapper::addAddress(const std::string &ip, const std::string &var, co
       if(std::find(S7200Addresses[ip].begin(), S7200Addresses[ip].end(), make_pair(var,  std::stoi(pollTime))) == S7200Addresses[ip].end())
       {
         S7200Addresses[ip].push_back(make_pair(var, std::stoi(pollTime)));
-        Common::Logger::globalInfo(Common::Logger::L1, "Added to S7200AddressList", var.c_str());
+        Common::Logger::globalInfo(Common::Logger::L2, "Added to S7200AddressList", var.c_str());
       }
     }
 }
