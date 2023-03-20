@@ -58,11 +58,18 @@ void S7200HWService::handleConsumerConfigError(const std::string& ip, int code, 
 
 void S7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-    if(ip.compare("VERSION"))
-      //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
-      insertInDataToDp(std::move(CharString((ip + "$" + var + "$" + pollTime).c_str())), payload);
-    else 
-      insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
+
+  if(var.compare("touchConError") == 0) {
+    Common::Logger::globalInfo(Common::Logger::L1, "Touch Conn Error Updated");
+    insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload); 
+    return;
+  }
+ 
+  if(ip.compare("VERSION"))
+    //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
+    insertInDataToDp(std::move(CharString((ip + "$" + var + "$" + pollTime).c_str())), payload);
+  else 
+    insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
 }
 
 void S7200HWService::handleNewIPAddress(const std::string& ip)
@@ -71,57 +78,108 @@ void S7200HWService::handleNewIPAddress(const std::string& ip)
 
     auto lambda = [&]
         {
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread");
-            S7200LibFacade aFacade(ip, this->_configConsumeCB, this->_configErrorConsumerCB);
-            if(!aFacade.isInitialized())
-            {
-                Common::Logger::globalError("Unable to initialize IP:", ip.c_str());
-            }
-            else
-            {
-                _facades[ip] = &aFacade;
-                writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
-                DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
-                DisconnectsPerIP[ip] = 0;
-                //Write Driver version
-                char* DrvVersion = new char[Common::Constants::getDrvVersion().size()];
-                std::strcpy(DrvVersion, Common::Constants::getDrvVersion().c_str());
-                Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
-                handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
+          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread");
+          S7200LibFacade aFacade(ip, this->_configConsumeCB, this->_configErrorConsumerCB);
+          if(!aFacade.isInitialized())
+          {
+              Common::Logger::globalInfo(Common::Logger::L1, "Unable to initialize IP:", ip.c_str());
+              Common::Logger::globalInfo(Common::Logger::L1, "Trying to connect again in 5 seconds");
+              
+              std::this_thread::sleep_for(std::chrono::seconds(5));
+              
+              do {
+                //Try to connect again.
+                aFacade.Reconnect();
 
-                while(_consumerRun && DisconnectsPerIP[ip] < 20 && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip))
-                {
-                    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Polling");
-                    auto cycleInterval = std::chrono::seconds(1);
-                    auto start = std::chrono::steady_clock::now();
-
-                    auto vars = static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->getS7200Addresses();
-                    if(vars.find(ip) != vars.end()){
-                       //First do all the writes for this IP, then the reads
-                        aFacade.write(writeQueueForIP[ip]);
-                        writeQueueForIP[ip].clear();
-                        aFacade.poll(vars[ip], start);                         
-                    }
-                    auto end = std::chrono::steady_clock::now();
-                    auto time_elapsed = end - start;
-                   
-                    // If we still have time left, then sleep
-                    if(time_elapsed < cycleInterval)
-                      std::this_thread::sleep_for(cycleInterval- time_elapsed);
+                if(!aFacade.isInitialized()) {
+                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds");
+                  aFacade.Disconnect();
+                  std::this_thread::sleep_for(std::chrono::seconds(5));
                 }
+              } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip));
+          }
 
-                if( static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) == false )
-                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list");
-                else if (DisconnectsPerIP[ip] >= 20) 
-                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. Max disconnects exceeded");
-                else
-                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread.");
+          if(aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip)) {
+            _facades[ip] = &aFacade;
+            writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
+            DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
+            DisconnectsPerIP[ip] = 0;
+            //Write Driver version
+            char* DrvVersion = new char[Common::Constants::getDrvVersion().size()];
+            std::strcpy(DrvVersion, Common::Constants::getDrvVersion().c_str());
 
-                aFacade.Disconnect();
-                IPAddressList.erase(ip);
-                aFacade.clearLastWriteTimeList();
+            std::this_thread::sleep_for(std::chrono::seconds(3)); //Give some time for the driver to load the addresses.
+            Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
+            handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
+
+            Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status\n\n");
+            bool touch_panel_conn_error = true;
+            TS7DataItem TouchPan_Conn_Stat_item = S7200LibFacade::S7200TS7DataItemFromAddress("touchConnError");
+            memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
+            handleConsumeNewMessage(ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+
+            while(_consumerRun && DisconnectsPerIP[ip] < 20 && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip))
+            {
+              Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Polling");
+              auto cycleInterval = std::chrono::seconds(1);
+              auto start = std::chrono::steady_clock::now();
+
+              auto vars = static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->getS7200Addresses();
+              if(vars.find(ip) != vars.end()){
+                  //First do all the writes for this IP, then the reads
+                  aFacade.write(writeQueueForIP[ip]);
+                  writeQueueForIP[ip].clear();
+                  aFacade.Poll(vars[ip], start);                         
+              }
+              auto end = std::chrono::steady_clock::now();
+              auto time_elapsed = end - start;
+              
+              // If we still have time left, then sleep
+              if(time_elapsed < cycleInterval)
+                std::this_thread::sleep_for(cycleInterval- time_elapsed);
+
+              if(aFacade.readFailures > 5) {
+                Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "More than 5 read failures, Disconnecting");
+                
+                do {
+                  //Disconnect and try to connect again.
+                  aFacade.Disconnect();
+                  aFacade.Reconnect();
+
+                  if(!aFacade.isInitialized()) {
+                    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds");
+                    std::this_thread::sleep_for(std::chrono::seconds(5));
+                  }
+                } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip));
+                aFacade.readFailures = 0;
+              }
             }
+          }
 
+          if( static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) == false )
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list");
+          else if (DisconnectsPerIP[ip] >= 20) 
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. Max disconnects exceeded");
+          else
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread.");
+
+          aFacade.Disconnect();
+          IPAddressList.erase(ip);
+          aFacade.clearLastWriteTimeList();
+          {
+            std::unique_lock<std::mutex> lck(aFacade.mutex_);
+
+            if(aFacade.FSThreadRunning == true) {
+              Common::Logger::globalInfo(Common::Logger::L1, "Cannot exit now. Need to wait for file sharing thread to terminate");
+              
+              aFacade.stopCurrentFSThread = true;
+              
+              aFacade.CV_SwitchFSThread.wait(lck, [&]() {aFacade.stopCurrentFSThread = true; return !aFacade.FSThreadRunning;});
+              
+              Common::Logger::globalInfo(Common::Logger::L1, "File Sharing thread terminated. Exiting.");
+            }
+            aFacade.stopCurrentFSThread = true;
+          }
         };    
     _pollingThreads.emplace_back(lambda);
 
@@ -185,40 +243,47 @@ void S7200HWService::workProc()
   // TODO somehow receive a message from your device
   std::lock_guard<std::mutex> lock{_toDPmutex};
   //Common::Logger::globalInfo(Common::Logger::L1,"Get lock on DPmutex");
-  Common::Logger::globalInfo(Common::Logger::L3,__PRETTY_FUNCTION__,"Size", CharString(_toDPqueue.size()));
+  //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Size", CharString(_toDPqueue.size()));
   while (!_toDPqueue.empty())
   {
+
     auto pair = std::move(_toDPqueue.front());
     _toDPqueue.pop();
+    //        Common::Logger::globalInfo(Common::Logger::L1,"For Request, First element is ", pair.first);
+    //    Common::Logger::globalInfo(Common::Logger::L1,"For Request, Second element is ", pair.second);
+    std::vector<std::string> addressOptions = Common::Utils::split(pair.first.c_str());
     obj.setAddress(pair.first);
 
     if(strcmp(pair.first.c_str(), "VERSION$STRING") == 0) {
-        Common::Logger::globalInfo(Common::Logger::L1,"For driver version, writing to WinCCOA value ", pair.second);
+        Common::Logger::globalInfo(Common::Logger::L2,"For driver version, writing to WinCCOA value ", pair.second);
     }
+
 
 //    // a chance to see what's happening
 //    if ( Resources::isDbgFlag(Resources::DBG_DRV_USR1) )
 //      obj.debugPrint();
-    std::vector<std::string> addressOptions = Common::Utils::split(pair.first.c_str());
+    
     // find the HWObject via the periphery address in the HWObject list,
     HWObject *addrObj = DrvManager::getHWMapperPtr()->findHWObject(&obj);
-    
+
     // ok, we found it; now send to the DPEs
     if ( addrObj )
     {
-        Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, pair.first, pair.second);
+        //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, pair.first, pair.second);
         //addrObj->debugPrint();
         obj.setOrgTime(TimeVar());  // current time
         int dataLengh = S7200LibFacade::getByteSizeFromAddress(Common::Utils::split(pair.first.c_str())[1]);
 
-        //printf("-->send to WinCCOA '%s' :'%s', size:'%d'\n", pair.first.c_str(), pair.second, dataLengh);
-
+        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA first ", pair.first.  c_str());
+        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA second ", pair.second );
+        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA thirds ", std::to_string(dataLengh).c_str());
+        //Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
         obj.setDlen(dataLengh); // lengh
 
         if(strcmp(pair.first.c_str(), "VERSION$STRING") == 0) {
             obj.setDlen(4);
-            Common::Logger::globalInfo(Common::Logger::L1,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
-            Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
+            Common::Logger::globalInfo(Common::Logger::L2,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
+            Common::Logger::globalInfo(Common::Logger::L2,"Data length is ", std::to_string(dataLengh).c_str());
         }
 
         obj.setData((PVSSchar*)pair.second); //data
@@ -228,8 +293,10 @@ void S7200HWService::workProc()
           Common::Logger::globalInfo(Common::Logger::L1,"Problem in sending item's value to PVSS");
         }
     } else {
-        Common::Logger::globalInfo(Common::Logger::L1,"Problem in getting HWObject for the address," + pair.first +"increasing disconnect count");
         DisconnectsPerIP[addressOptions[ADDRESS_OPTIONS_IP]]++;
+        Common::Logger::globalInfo(Common::Logger::L1,"Problem in getting HWObject for the address," + pair.first +"increasing disconnect count");
+        Common::Logger::globalInfo(Common::Logger::L1,"Now disconnect count is : ", std::to_string(DisconnectsPerIP[addressOptions[ADDRESS_OPTIONS_IP]]).c_str());
+        
     }
   }
 }
@@ -255,7 +322,7 @@ PVSSboolean S7200HWService::writeData(HWObject *objPtr)
   {
       try
       {
-        Common::Logger::globalInfo(Common::Logger::L2,"Incoming CONFIG address",objPtr->getAddress(), objPtr->getInfo() );
+        Common::Logger::globalInfo(Common::Logger::L1,"Incoming CONFIG address",objPtr->getAddress(), objPtr->getInfo() );
         
         if(addressOptions[ADDRESS_OPTIONS_IP].compare("DEBUGLVL") == 0) {
           int16_t* retVal = new int16_t;
@@ -290,8 +357,17 @@ PVSSboolean S7200HWService::writeData(HWObject *objPtr)
 
     if(_facades.find(addressOptions[ADDRESS_OPTIONS_IP]) != _facades.end()){
         if(!S7200LibFacade::S7200AddressIsValid(addressOptions[ADDRESS_OPTIONS_VAR])){
-          Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Not a valid Var");
-          return PVSS_FALSE;
+          if(addressOptions[ADDRESS_OPTIONS_VAR].compare("PANEL_IP")) {
+            Common::Logger::globalWarning("Not a valid Var for address", objPtr->getAddress().c_str());
+            return PVSS_FALSE;
+          } else {
+            int length = (int)objPtr->getDlen();
+            char *correctval = new char[length];
+            std::memcpy(correctval, objPtr->getDataPtr(), length);
+
+             Common::Logger::globalInfo(Common::Logger::L1,"Received config for Touch Panel IP, value is ", correctval);
+             _facades[addressOptions[ADDRESS_OPTIONS_IP]]->startFileSharingThread(correctval);
+          }
         }
         else{
           auto wrQueue = writeQueueForIP.find(addressOptions[ADDRESS_OPTIONS_IP]);
@@ -338,7 +414,7 @@ void handleSegfault(int signal_code){
     size = backtrace(array, 50);
 
     // print out all the frames to stderr
-    fprintf(stderr, "Error: signal %d:\n", signal_code);
+    fprintf( stderr, "Error: signal %d:\n", signal_code);
     Common::Logger::globalWarning("S7200HWService suffered a segmentation fault, code " + CharString(signal_code));
     backtrace_symbols_fd(array, size, STDERR_FILENO);
 
