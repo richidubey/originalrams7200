@@ -90,10 +90,10 @@ void S7200HWService::handleNewIPAddress(const std::string& ip)
                   aFacade.Disconnect();
                   std::this_thread::sleep_for(std::chrono::seconds(5));
                 }
-              } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip));
+              } while(!aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) &&_consumerRun);
           }
 
-          if(aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip)) {
+          if(aFacade.isInitialized() && static_cast<S7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) && _consumerRun) {
             _facades[ip] = &aFacade;
             writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
             DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
