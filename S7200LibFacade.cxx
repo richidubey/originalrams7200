@@ -469,35 +469,12 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
     int iRetSend, iRetRecv;
     FILE *fpUser;
     int count;
-    
-    while(S7200Resources::getDisableCommands()){
-         // If the Server is Passive (for redundant systems)
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        {
-            std::unique_lock<std::mutex> lck(mutex_);
-            
-            if(stopCurrentFSThread) {
-                Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...");
-                FSThreadRunning = false;
-                CV_SwitchFSThread.notify_one();
-                delete[] ip;
-                return;
-            }
-        }
-
-    };
-
     TS7DataItem TouchPan_Conn_Stat_item;
-
-    Common::Logger::globalInfo(Common::Logger::L2, "Connecting to ip", ip);
-    Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
 
     int socket_desc = -1;
     bool switch_to_event;
 
     bool sock_err = false;
-    
     struct sockaddr_in server_addr;
     
     //memset(&server_addr, 0, sizeof(server_addr));
@@ -517,7 +494,24 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
     connect_try_count = 0;
     
     //Always ready and trying to connect	
-    while(1) { 
+    while(1) {
+        while(S7200Resources::getDisableCommands()){
+            // If the Server is Passive (for redundant systems)
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+            {
+                std::unique_lock<std::mutex> lck(mutex_);
+                
+                if(stopCurrentFSThread) {
+                    Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...");
+                    FSThreadRunning = false;
+                    CV_SwitchFSThread.notify_one();
+                    delete[] ip;
+                    return;
+                }
+            }
+
+        };
 
         Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
         touch_panel_conn_error = true;
@@ -539,7 +533,9 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
             }
         }
 
-                
+        Common::Logger::globalInfo(Common::Logger::L2, "Connecting to ip", ip);
+        Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
+
         socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
          if(socket_desc == -1) {
@@ -740,6 +736,12 @@ void S7200LibFacade::FileSharingTask(char* ip, int port) {
                     delete[] ip;
                     return;
                 }
+            }
+
+            if(S7200Resources::getDisableCommands()) {
+                //Driver in passive mode. (for redundant systems)
+                close(socket_desc);
+                break;
             }
 
             Common::Logger::globalInfo(Common::Logger::L2, "Waiting upto 2 minutes to receive number for handshake \n");
