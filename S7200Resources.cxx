@@ -20,7 +20,7 @@
 #include "Common/Constants.hxx"
 #include <ErrHdl.hxx>
 
-const CharString S7200Resources::SECTION_NAME = "s7200";
+const CharString S7200Resources::SECTION_NAME = "rams7200";
 const CharString S7200Resources::TSAP_PORT_LOCAL = "localTSAP";
 const CharString S7200Resources::TSAP_PORT_REMOTE = "remoteTSAP";
 const CharString S7200Resources::POLLING_INTERVAL = "pollingInterval";
