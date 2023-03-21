@@ -4,7 +4,7 @@ INCLUDE = $(COMDRV_INCL) -I.
 
 # GCOV flags + libs
 #CXXFLAGS += -fprofile-arcs -ftest-coverage -O0 -fPIC
-CXXFLAGS += -std=c++11 -ggdb -rdynamic -O3
+CXXFLAGS += -std=c++11 -ggdb -rdynamic -O3 
 #LIBS	= $(COMDRV_LIBS) $(LINKLIB) -pthread -lgcov
 
 WRAPPER = snap7.cpp
@@ -12,7 +12,7 @@ LIBS	= $(COMDRV_LIBS) $(LINKLIB) -pthread -lsnap7
 
 OBJS = $(COMDRV_OBJS)
 
-DRV_NAME = WCCOAS7200
+DRV_NAME = WCCOARAMS7200
 MYOBJS = S7200Drv.o \
 	S7200HWMapper.o \
 	S7200HWService.o \
@@ -32,8 +32,7 @@ COMMON_TYPES = $(COMMON_SOURCE:.cxx=.o)
 TRANSFORMATIONS_SOURCE = $(wildcard Transformations/*.cxx)
 TRANSFORMATIONS = $(TRANSFORMATIONS_SOURCE:.cxx=.o)
 
-
-WCCOAS7200: $(MYOBJS) $(COMMON_TYPES) $(TRANSFORMATIONS)
+WCCOARAMS7200: $(MYOBJS) $(COMMON_TYPES) $(TRANSFORMATIONS) Common/Constants.cxx
 	@rm -f addVerInfo.o
 	@$(MAKE) addVerInfo.o
 	$(LINK_CMD) -o $(DRV_NAME) *.o $(OBJS) ./$(WRAPPER) $(LIBS)
@@ -46,7 +45,7 @@ installLibs:
 	#cd ./libs/cppS7200 && mkdir -p build && cd build && cmake .. && make && sudo make install
 	
 
-install: WCCOAS7200
+install: WCCOARAMS7200
 ifdef PVSS_PROJ_PATH
 	@echo
 	@echo "***************************************************************************************"
@@ -69,7 +68,7 @@ restart:
 update: clean install restart
 
 clean:
-	@rm -f *.o $(DRV_NAME) WCCOAS7200
+	@rm -f *.o $(DRV_NAME) WCCOARAMS7200
 
 docs:
 	doxygen Doxyfile

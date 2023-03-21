@@ -44,6 +44,9 @@ class S7200Resources : public DrvRsrce
     static const CharString TSAP_PORT_LOCAL;
     static const CharString TSAP_PORT_REMOTE;
     static const CharString POLLING_INTERVAL;
+    static const CharString MEASUREMENT_PATH;
+    static const CharString EVENT_PATH;
+    static const CharString USERFILE_PATH;
 };
 
 #endif
