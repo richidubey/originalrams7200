@@ -474,6 +474,9 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
     int socket_desc = -1;
     bool switch_to_event;
 
+    char ack_drv[] = "##DRV_ACK##\n\n";
+    char ack_pnl[] = "##PNL_ACK##";
+
     bool sock_err = false;
     struct sockaddr_in server_addr;
     
@@ -815,7 +818,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     break; 
                 }
 
-                sprintf(buffer, "##DRV_ACK##\n\n");
+                sprintf(buffer, ack_drv);
                 Common::Logger::globalInfo(Common::Logger::L1, "Sending final marker ##DRV_ACK## for User File\n");
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0);
                 
@@ -834,7 +837,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 switch_to_event = false;
 
-                sprintf(buffer, "##DRV_ACK##\n\n");
+                sprintf(buffer, ack_drv);
                     
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -868,7 +871,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     if(strcmp(buffer, "Event") == 0) { //Start Receiving Event files
                         switch_to_event = true;
 
-                        sprintf(buffer, "##DRV_ACK##\n\n");
+                        sprintf(buffer, ack_drv);
                         iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
                         if(iRetSend <= 0) {
@@ -883,13 +886,13 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         continue;
                     }
 
-                    if(strlen(buffer) >=11)
-                        memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
+                    if(strlen(buffer) >= strlen(ack_pnl))
+                        memcpy( subbuffer, &buffer[strlen(buffer) - strlen(ack_pnl)], strlen(ack_pnl));
 
-                    subbuffer[11] = '\0';
+                    subbuffer[strlen(ack_pnl)] = '\0';
                     
                     
-                    if( strcmp("##PNL_ACK##", subbuffer) == 0 ) {
+                    if( strcmp(ack_pnl, subbuffer) == 0 ) {
                         Common::Logger::globalInfo(Common::Logger::L1, "LogFile treatment successfully finished.\n");
                         break;
                     }
@@ -919,7 +922,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
 
-                    sprintf(buffer, "##DRV_ACK##\n\n");
+                    sprintf(buffer, ack_drv);
                     
                     iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -943,7 +946,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                     sock_err = false;
                     
-                    while( strcmp("##PNL_ACK##", subbuffer) != 0 ) {
+                    while( strcmp(ack_pnl, subbuffer) != 0 ) {
                         count++;
                         Common::Logger::globalInfo(Common::Logger::L2, "Inside loop\n");
                         Common::Logger::globalInfo(Common::Logger::L2, "Count is "+ CharString(count) + "and sizeof buffer is "+ CharString(sizeof(buffer)));	
@@ -970,10 +973,10 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                         //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
 
-                        if(strlen(buffer) >= 11)
-                            memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
+                        if(strlen(buffer) >= strlen(ack_pnl))
+                            memcpy( subbuffer, &buffer[strlen(buffer) - strlen(ack_pnl)], strlen(ack_pnl));
 
-                        subbuffer[11] = '\0';
+                        subbuffer[strlen(ack_pnl)] = '\0';
 
                         Common::Logger::globalInfo(Common::Logger::L2, "After packet print\n");
                         
@@ -983,7 +986,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             file<<buffer;	
                             Common::Logger::globalInfo(Common::Logger::L2, "Written to file\n");
                         } else {
-                            buffer[strlen(buffer) - 11] = '\0';
+                            buffer[strlen(buffer) - strlen(ack_pnl)] = '\0';
                             file<<buffer;	
                             //fprintf( fpLog, "%s", buffer);
                         } 		
