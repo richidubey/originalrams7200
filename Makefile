@@ -13,12 +13,12 @@ LIBS	= $(COMDRV_LIBS) $(LINKLIB) -pthread -lsnap7
 OBJS = $(COMDRV_OBJS)
 
 DRV_NAME = WCCOARAMS7200
-MYOBJS = S7200Drv.o \
-	S7200HWMapper.o \
-	S7200HWService.o \
-	S7200Resources.o \
-	S7200LibFacade.o \
-	S7200Main.o
+MYOBJS = RAMS7200Drv.o \
+	RAMS7200HWMapper.o \
+	RAMS7200HWService.o \
+	RAMS7200Resources.o \
+	RAMS7200LibFacade.o \
+	RAMS7200Main.o
 
 define INSTALL_BODY
 	@if [[ -n "$(PVSS_PROJ_PATH)" ]]; then \

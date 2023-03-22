@@ -12,13 +12,13 @@ LIBS	= $(COMDRV_LIBS) $(LINKLIB) -pthread -lsnap7
 
 OBJS = $(COMDRV_OBJS)
 
-DRV_NAME = WCCOAS7200
-MYOBJS = S7200Drv.o \
-	S7200HWMapper.o \
-	S7200HWService.o \
-	S7200Resources.o \
-	S7200LibFacade.o \
-	S7200Main.o
+DRV_NAME = WCCOARAMS7200
+MYOBJS = RAMS7200Drv.o \
+	RAMS7200HWMapper.o \
+	RAMS7200HWService.o \
+	RAMS7200Resources.o \
+	RAMS7200LibFacade.o \
+	RAMS7200Main.o
 
 define INSTALL_BODY
 	@if [[ -n "$(PVSS_PROJ_PATH)" ]]; then \
@@ -33,7 +33,7 @@ TRANSFORMATIONS_SOURCE = $(wildcard Transformations/*.cxx)
 TRANSFORMATIONS = $(TRANSFORMATIONS_SOURCE:.cxx=.o)
 
 
-WCCOAS7200: $(MYOBJS) $(COMMON_TYPES) $(TRANSFORMATIONS)
+WCCOARAMS7200: $(MYOBJS) $(COMMON_TYPES) $(TRANSFORMATIONS)
 	@rm -f addVerInfo.o
 	@$(MAKE) addVerInfo.o
 	$(LINK_CMD) -o $(DRV_NAME) *.o $(OBJS) ./$(WRAPPER) $(LIBS)
@@ -46,7 +46,7 @@ installLibs:
 	#cd ./libs/cppS7200 && mkdir -p build && cd build && cmake .. && make && sudo make install
 	
 
-install: WCCOAS7200
+install: WCCOARAMS7200
 ifdef PVSS_PROJ_PATH
 	@echo
 	@echo "***************************************************************************************"
@@ -69,7 +69,7 @@ restart:
 update: clean install restart
 
 clean:
-	@rm -f *.o $(DRV_NAME) WCCOAS7200
+	@rm -f *.o $(DRV_NAME) WCCOARAMS7200
 
 docs:
 	doxygen Doxyfile

@@ -3,7 +3,7 @@ CERN HSE Computing  (HSE-TS-CS)
 
 Contact email: hse-cen-co@cern.ch
 
-WinCC OA S7200 Driver
+WinCC OA RAMS7200 Driver
 ==================================================
 
 
@@ -23,11 +23,11 @@ WinCC OA S7200 Driver
 
 5. [WinCC OA Installation](#toc5)
 
-6. [S7200 Driver Technical Documentation](#toc6)
+6. [RAMS7200 Driver Technical Documentation](#toc6)
 
     6.1. [Main entry points](#toc6.1)
 
-    6.2. [Addressing DPEs with the S7200 driverl](#toc6.2)
+    6.2. [Addressing DPEs with the RAMS7200 driverl](#toc6.2)
 
     * 6.2.1 [Data types](#toc6.2.1)
     * 6.2.2 [Adding a new type](#toc6.2.4)
@@ -41,7 +41,7 @@ WinCC OA S7200 Driver
 
 # 1. Description #
 
-This WinCC OA driver enables bidirectional data transfer between S7200 devices and the WinCCOA environment, with support for multiple polling intervals and consolidated write functions. 
+This WinCC OA driver enables bidirectional data transfer between RAMS7200 devices and the WinCCOA environment, with support for multiple polling intervals and consolidated write functions. 
 
 Additionally, the driver offers compatibility with multiple IP addresses, making it a versatile and reliable tool for data integration.
 
@@ -76,21 +76,21 @@ Project has a Makefile. Note that you can also set the `PVSS_PROJ_PATH` environm
 
 ## 3.3 Run
 
-It can be run from the WinCCOA Console or from command line and it will require the `config.S7200` file:
+It can be run from the WinCCOA Console or from command line and it will require the `config.RAMS7200` file:
 
-    ./WINCCOAS7200Drv -num <driver_number> -proj <project_name> +config config.S7200
+    ./WINCCOARAMS7200Drv -num <driver_number> -proj <project_name> +config config.RAMS7200
 
 <a name="toc4"></a>
 
 # 4. Config file #
 
-The `config.S7200` file has to be present under the WinCCOA project folder `config`.
+The `config.RAMS7200` file has to be present under the WinCCOA project folder `config`.
 
-When configuring the file, it is necessary to specify the local and remote TSAP ports, as well as the minimum polling interval required for seamless communication between the WinCCOA environment and external devices or systems.
+When configuring the file, it is necessary to specify the local and remote TSAP ports, as well as the minimum polling interval required for seamless communication between the WinCCOA environment and external devices or systems. You can also provide the directory for storing the measurement and event files as well as the location of the User file.
 
 Here is an example config file:
 ```
-[S7200]
+[ramS7200]
 # Define local TSAP port 
 localTSAP = 0x1401
 
@@ -99,6 +99,15 @@ remoteTSAP = 0x1400
 
 # Define polling Interval
 pollingInterval = 3
+
+# Define the path to the measurement files (Default:/opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/) 
+mesFile = /opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/
+
+# Define the path to the event files (Default: /opt/ramdev/PVSS_projects/REMUS_TEST/data/event/in/)
+eventFile = /opt/ramdev/PVSS_projects/REMUS_TEST/data/event/in/
+
+# Define the path to the User file (Default: /opt/ramdev/PVSS_projects/REMUS_TEST/data/usr/in/User.dat)
+userFile = /opt/ramdev/PVSS_projects/REMUS_TEST/data/usr/in/User.dat
 ```
 
 <a name="toc5"></a>
@@ -107,61 +116,61 @@ pollingInterval = 3
 
 Under the [winccoa folder](./winccoa/) you will find the following files that you need to copy to your project in the corresponding paths:
 
-* [dplist/S7200_driver_config.dpl](./winccoa/dplist/S7200_driver_config.dpl) : it contains `internal driver & CONFIG_S7200 DPs`. Once you've successfully launched the driver in the WinCC project manangement, you can import it via the ASCII Manager(refer to the official WinCC OA Documentation).
+* [dplist/RAMS7200_driver_config.dpl](./winccoa/dplist/RAMS7200_driver_config.dpl) : it contains `internal driver & CONFIG_RAMS7200 DPs`. Once you've successfully launched the driver in the WinCC project manangement, you can import it via the ASCII Manager(refer to the official WinCC OA Documentation).
 
 Notes:
 
     * This is a specific dump of the REMUS redundant project DPs 
     * The internal driver number in the dump is 14. If it's unavailable to you, try to modify the dump file directly. 
 
-* [dplist/panels/para/address_S7200.pnl](./winccoa/panels/para/address_S7200.pnl) : a panel that you can use in para for S7200 addressing. If you install this panel, then you will also need the WinCC OA scripts that go along:
+* [dplist/panels/para/address_RAMS7200.pnl](./winccoa/panels/para/address_RAMS7200.pnl) : a panel that you can use in para for RAMS7200 addressing. If you install this panel, then you will also need the WinCC OA scripts that go along:
 
     * [scripts/userDrivers.ctl](./winccoa/scripts/userDrivers.ctl)
     * [scripts/userPara.ctl](./winccoa/scripts/userPara.ctl)
 
 
 
-See [6.3 Driver configuration](#toc6.3) section for a brief descprition of relevant CONFIG_S7200 DPEs.
+See [6.3 Driver configuration](#toc6.3) section for a brief descprition of relevant CONFIG_RAMS7200 DPEs.
 
 
 <a name="toc6"></a>
 
-# 6. S7200 Driver Technical Documentation #
+# 6. RAMS7200 Driver Technical Documentation #
 
 <a name="toc6.1"></a>
 
 ## 6.1 Main entry points ##
 After the driver startup, the main entry points in the driver are:
     
-* S7200HwService::writeData() -> WinCC to Driver communication
+* RAMS7200HwService::writeData() -> WinCC to Driver communication
 
-    This is how the S7200 streaming is performed. Thanks to the addressing `<TOPIC>$<KEY>[$<DEBOUNCING_TIMEFRAME>]`, the driver will be able to stream to the right topic.
+    This is how the RAMS7200 streaming is performed. Thanks to the addressing `<TOPIC>$<KEY>[$<DEBOUNCING_TIMEFRAME>]`, the driver will be able to stream to the right topic.
 
-* S7200HwService::workProc()  -> Driver to WinCC communication
+* RAMS7200HwService::workProc()  -> Driver to WinCC communication
 
-    This is how we push data to WinCC from S7200. Thanks to the addressing `<TOPIC>$<KEY>`,the driver will be able to map the data ingested from the respective S7200 topic to the WinCC DPE.
+    This is how we push data to WinCC from RAMS7200. Thanks to the addressing `<TOPIC>$<KEY>`,the driver will be able to map the data ingested from the respective RAMS7200 topic to the WinCC DPE.
 
 Please refer to the WinCC documentation for more information on the WinCC OA API. 
-For more info on the debouncing, see [Remus RealTime Evolution - S7200 presentation](./doc/REMUS_RealTime_Evolution_-_S7200.pptx).
+For more info on the debouncing, see [Remus RealTime Evolution - RAMS7200 presentation](./doc/REMUS_RealTime_Evolution_-_RAMS7200.pptx).
 
 <a name="toc6.2"></a>
 
-## 6.2 Addressing DPEs with the S7200 driver ##
+## 6.2 Addressing DPEs with the RAMS7200 driver ##
 
 <a name="toc6.2.1"></a>
 
 ### 6.2.1 Data Types ###
-When the S7200 driver pushes a DPE value to WinCC, a transformation takes place. See [Transformations folder](./Transformations). We are currently supporting the following data types for the periphery address:
+When the RAMS7200 driver pushes a DPE value to WinCC, a transformation takes place. See [Transformations folder](./Transformations). We are currently supporting the following data types for the periphery address:
 
 --------------------------------------------------------------------------------------------------------------------------------
 | WinCC DataType    | Transformation class                                          | Periphery data type value                 |
 | ------------------| --------------------------------------------------------------| ----------------------------------------- |
-| bool              | [S7200BoolTrans.cxx](./Transformations/S7200BoolTrans.cxx)    | 1000 (TransUserType def in WinCC OA API)  |
-| uint8             | [S7200Uint8Trans.cxx](./Transformations/S7200Uint8Trans.cxx)  | 1001 (TransUserType + 1)                  |
-| int32             | [S7200Int32Trans.cxx](./Transformations/S7200Int32Trans.cxx)  | 1002 (TransUserType + 2)                  |
-| int64             | [S7200Int64Trans.cxx](./Transformations/S7200Int64Trans.cxx)  | 1003 (TransUserType + 3)                  |
-| float             | [S7200FloatTrans.cxx](./Transformations/S7200FloatTrans.cxx)  | 1004 (TransUserType + 4)                  |
-| string            | [S7200StringTrans.cxx](./Transformations/S7200StringTrans.cxx)| 1005 (TransUserType + 5)                  |
+| bool              | [RAMS7200BoolTrans.cxx](./Transformations/RAMS7200BoolTrans.cxx)    | 1000 (TransUserType def in WinCC OA API)  |
+| uint8             | [RAMS7200Uint8Trans.cxx](./Transformations/RAMS7200Uint8Trans.cxx)  | 1001 (TransUserType + 1)                  |
+| int32             | [RAMS7200Int32Trans.cxx](./Transformations/RAMS7200Int32Trans.cxx)  | 1002 (TransUserType + 2)                  |
+| int64             | [RAMS7200Int64Trans.cxx](./Transformations/RAMS7200Int64Trans.cxx)  | 1003 (TransUserType + 3)                  |
+| float             | [RAMS7200FloatTrans.cxx](./Transformations/RAMS7200FloatTrans.cxx)  | 1004 (TransUserType + 4)                  |
+| string            | [RAMS7200StringTrans.cxx](./Transformations/RAMS7200StringTrans.cxx)| 1005 (TransUserType + 5)                  |
 --------------------------------------------------------------------------------------------------------------------------------
 
 <a name="toc6.2.2"></a>
@@ -170,22 +179,22 @@ When the S7200 driver pushes a DPE value to WinCC, a transformation takes place.
 
 To add a new transformation you need to do the following: 
 
-* create a define in `S7200HWMappeer.hxx`
+* create a define in `RAMS7200HWMappeer.hxx`
 
-        #define S7200DrvDoubleTransType (TransUserType + 7)
+        #define RAMS7200DrvDoubleTransType (TransUserType + 7)
  
-* handle the new transformation type in `S7200HWMapper::addDpPa()`
+* handle the new transformation type in `RAMS7200HWMapper::addDpPa()`
 * implement the transformation type class. The important functions here are 
     
-    * `::toPeriph(...)`  for WinCC OA to S7200 driver transformation
-    * `::toVar(...)`   for S7200 driver to WinCC OA transformation
+    * `::toPeriph(...)`  for WinCC OA to RAMS7200 driver transformation
+    * `::toVar(...)`   for RAMS7200 driver to WinCC OA transformation
 
 
 <a name="toc6.3"></a>
 
 ## 6.3 Driver Configuration ##
 
-Available via the WinCC OA `CONFIG_S7200` DataPoint, we have the following 
+Available via the WinCC OA `CONFIG_RAMS7200` DataPoint, we have the following 
 
 | Config DPE                | Direction    | Addressing                    | Type      | Description                                                                        |
 | -------------             | ---------    | -------------                 | --------- | -------------                                                                      |
@@ -198,4 +207,4 @@ Available via the WinCC OA `CONFIG_S7200` DataPoint, we have the following
 
 ## 6.4 Activity Diagram ##
 
-![](./doc/S7200Design.png)
+![](./doc/RAMS7200Design.png)

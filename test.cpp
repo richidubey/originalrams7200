@@ -153,18 +153,18 @@ bool Check(int Result, const char * function)
     return Result==0;
 }
 
-int S7200AddressGetWordLen(std::string S7200Address)
+int RAMS7200AddressGetWordLen(std::string RAMS7200Address)
 {
-    if(S7200Address.length() < 2){
+    if(RAMS7200Address.length() < 2){
         return -1; //invalid
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'b'){
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b'){
         return S7WLByte;
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'w'){
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'w'){
         return S7WLWord;
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'd'){
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'd'){
         return S7WLReal;
     }
     else{  //e.g.: V255.3
@@ -173,70 +173,70 @@ int S7200AddressGetWordLen(std::string S7200Address)
     return 0; //dummy
 }
 
-int S7200AddressGetStart(std::string S7200Address)
+int RAMS7200AddressGetStart(std::string RAMS7200Address)
 {
-    if(S7200Address.length() < 2){
+    if(RAMS7200Address.length() < 2){
         return -1; //invalid
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'b' || std::tolower((char) S7200Address.at(1)) == 'w' || std::tolower((char) S7200Address.at(1)) == 'd'){ //Addesses like XX9999
-        if(S7200Address.find_first_of('.')  == std::string::npos){
-            return (int) std::stoi(S7200Address.substr(2)); //e.g.:VB2978
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b' || std::tolower((char) RAMS7200Address.at(1)) == 'w' || std::tolower((char) RAMS7200Address.at(1)) == 'd'){ //Addesses like XX9999
+        if(RAMS7200Address.find_first_of('.')  == std::string::npos){
+            return (int) std::stoi(RAMS7200Address.substr(2)); //e.g.:VB2978
         }
         else{
-            return (int) std::stoi(S7200Address.substr(2, S7200Address.find_first_of('.')-1)); //e.g.:VB2978.20
+            return (int) std::stoi(RAMS7200Address.substr(2, RAMS7200Address.find_first_of('.')-1)); //e.g.:VB2978.20
         }
     }
     else{ //Addesses like X9999
-        if(S7200Address.find_first_of('.')  == std::string::npos){
+        if(RAMS7200Address.find_first_of('.')  == std::string::npos){
             return -1; //invalid
         }
         else{
-            return (int) std::stoi(S7200Address.substr(1, S7200Address.find_first_of('.')-1)); //e.g.: V255.3
+            return (int) std::stoi(RAMS7200Address.substr(1, RAMS7200Address.find_first_of('.')-1)); //e.g.: V255.3
         }
     }
     return 0; //dummy
 }
 
-int S7200AddressGetArea(std::string S7200Address)
+int RAMS7200AddressGetArea(std::string RAMS7200Address)
 {
-    if(S7200Address.length() < 2){
+    if(RAMS7200Address.length() < 2){
         return -1; //invalid
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 'v'){ //Data Blocks
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 'v'){ //Data Blocks
         return S7AreaDB;
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 'i' || std::tolower((char) S7200Address.at(0)) == 'e'){ //Inputs
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 'i' || std::tolower((char) RAMS7200Address.at(0)) == 'e'){ //Inputs
         return S7AreaPE;
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 'q' || std::tolower((char) S7200Address.at(0)) == 'a'){ //Outputs
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 'q' || std::tolower((char) RAMS7200Address.at(0)) == 'a'){ //Outputs
         return S7AreaPA;
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 'm' || std::tolower((char) S7200Address.at(0)) == 'f'){ //Flag memory
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 'm' || std::tolower((char) RAMS7200Address.at(0)) == 'f'){ //Flag memory
         return S7AreaMK;
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 't'){ //Timers
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 't'){ //Timers
         return S7AreaTM;
     }
-    else if(std::tolower((char) S7200Address.at(0)) == 'c' || std::tolower((char) S7200Address.at(0)) == 'z'){ //Counters
+    else if(std::tolower((char) RAMS7200Address.at(0)) == 'c' || std::tolower((char) RAMS7200Address.at(0)) == 'z'){ //Counters
         return S7AreaCT;
     }
     return -1; //invalid
 }
 
-int S7200AddressGetAmount(std::string S7200Address)
+int RAMS7200AddressGetAmount(std::string RAMS7200Address)
 {
-    if(S7200Address.length() < 2){
+    if(RAMS7200Address.length() < 2){
         return 0;
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'b'){ //VB can be words or strings if it contains a '.'
-        if(S7200Address.find_first_of('.') != std::string::npos){
-            return (int) std::stoi(S7200Address.substr(S7200Address.find('.')+1));
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b'){ //VB can be words or strings if it contains a '.'
+        if(RAMS7200Address.find_first_of('.') != std::string::npos){
+            return (int) std::stoi(RAMS7200Address.substr(RAMS7200Address.find('.')+1));
         }
         else{
             return 1;
         }
     }
-    else if(std::tolower((char) S7200Address.at(1)) == 'w' || std::tolower((char) S7200Address.at(1)) == 'd'){
+    else if(std::tolower((char) RAMS7200Address.at(1)) == 'w' || std::tolower((char) RAMS7200Address.at(1)) == 'd'){
         return 1;
     }
     else{ //bit addressing like V255.3
@@ -245,13 +245,13 @@ int S7200AddressGetAmount(std::string S7200Address)
     return 0; //dummy
 }
 
-int S7200AddressGetBit(std::string S7200Address)
+int RAMS7200AddressGetBit(std::string RAMS7200Address)
 {
-    if(S7200Address.length() < 2){
+    if(RAMS7200Address.length() < 2){
         return -1; //invalid
     }
-    else if(S7200AddressGetWordLen(S7200Address) == S7WLBit && S7200Address.find_first_of('.') != std::string::npos){
-        return (int) std::stoi(S7200Address.substr(S7200Address.find('.')+1));
+    else if(RAMS7200AddressGetWordLen(RAMS7200Address) == S7WLBit && RAMS7200Address.find_first_of('.') != std::string::npos){
+        return (int) std::stoi(RAMS7200Address.substr(RAMS7200Address.find('.')+1));
     }
     else{
         return 0; //N/A
@@ -259,7 +259,7 @@ int S7200AddressGetBit(std::string S7200Address)
     return 0; //dummy
 }
 
-int S7200DataSizeByte(int WordLength)
+int RAMS7200DataSizeByte(int WordLength)
 {
      switch (WordLength){
           case S7WLBit     : return 1;  // S7 sends 1 byte per bit
@@ -273,7 +273,7 @@ int S7200DataSizeByte(int WordLength)
      }
 }
 
-void S7200DisplayTS7DataItem(PS7DataItem item)
+void RAMS7200DisplayTS7DataItem(PS7DataItem item)
 {
     //hexdump(item->pdata  , sizeof(item->pdata));
     switch(item->WordLen){
@@ -308,23 +308,23 @@ void S7200DisplayTS7DataItem(PS7DataItem item)
     }
 }
 
-TS7DataItem S7200TS7DataItemFromAddress(std::string S7200Address){
+TS7DataItem RAMS7200TS7DataItemFromAddress(std::string RAMS7200Address){
     TS7DataItem item;
-    item.Area     = S7200AddressGetArea(S7200Address);
-    item.WordLen  = S7200AddressGetWordLen(S7200Address);
+    item.Area     = RAMS7200AddressGetArea(RAMS7200Address);
+    item.WordLen  = RAMS7200AddressGetWordLen(RAMS7200Address);
     item.DBNumber = 1;
-    item.Start    = item.WordLen == S7WLBit ? (S7200AddressGetStart(S7200Address)*8)+S7200AddressGetBit(S7200Address) : S7200AddressGetStart(S7200Address);
-    item.Amount   = S7200AddressGetAmount(S7200Address);
-    item.pdata   = malloc(S7200DataSizeByte(item.WordLen )*item.Amount);
+    item.Start    = item.WordLen == S7WLBit ? (RAMS7200AddressGetStart(RAMS7200Address)*8)+RAMS7200AddressGetBit(RAMS7200Address) : RAMS7200AddressGetStart(RAMS7200Address);
+    item.Amount   = RAMS7200AddressGetAmount(RAMS7200Address);
+    item.pdata   = malloc(RAMS7200DataSizeByte(item.WordLen )*item.Amount);
     return item;
 }
 
-TS7DataItem S7200Read(std::string S7200Address, void* val)
+TS7DataItem RAMS7200Read(std::string RAMS7200Address, void* val)
 {
-    TS7DataItem item = S7200TS7DataItemFromAddress(S7200Address);
-    int memSize = (S7200DataSizeByte(item.WordLen )*item.Amount);
+    TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
+    int memSize = (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
 
-    printf("-------------read S7200Address=>(Area, Start, WordLen, Amount): memSize : %s =>(%d, %d, %d, %d) : %dB", S7200Address.c_str(), item.Area, item.Start, item.WordLen, item.Amount, memSize);
+    printf("-------------read RAMS7200Address=>(Area, Start, WordLen, Amount): memSize : %s =>(%d, %d, %d, %d) : %dB", RAMS7200Address.c_str(), item.Area, item.Start, item.WordLen, item.Amount, memSize);
     
     if(Client->ReadMultiVars(&item, 1) == 0){
         if(item.WordLen == S7WLWord){
@@ -336,7 +336,7 @@ TS7DataItem S7200Read(std::string S7200Address, void* val)
         else{
             std::memcpy(val, item.pdata, memSize);
         }
-        S7200DisplayTS7DataItem(&item);
+        RAMS7200DisplayTS7DataItem(&item);
     }
     else{
         printf("-->read NOK!\n");
@@ -344,10 +344,10 @@ TS7DataItem S7200Read(std::string S7200Address, void* val)
     return item;
 }
 
-TS7DataItem S7200Write(std::string S7200Address, void* val)
+TS7DataItem RAMS7200Write(std::string RAMS7200Address, void* val)
 {
-    TS7DataItem item = S7200TS7DataItemFromAddress(S7200Address);
-    int memSize = (S7200DataSizeByte(item.WordLen )*item.Amount);
+    TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
+    int memSize = (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
     if(item.WordLen == S7WLWord){
         uint16_t wordVal;
         std::memcpy(&wordVal, val, memSize);
@@ -357,7 +357,7 @@ TS7DataItem S7200Write(std::string S7200Address, void* val)
     else{
         std::memcpy(item.pdata , val , memSize);
     }
-    printf("-------------write S7200Address=>(Area, Start, WordLen, Amount): memSize : %s =>(%d, %d, %d, %d) : %dB", S7200Address.c_str(), item.Area, item.Start, item.WordLen, item.Amount, memSize);
+    printf("-------------write RAMS7200Address=>(Area, Start, WordLen, Amount): memSize : %s =>(%d, %d, %d, %d) : %dB", RAMS7200Address.c_str(), item.Area, item.Start, item.WordLen, item.Amount, memSize);
     if(Client->WriteMultiVars(&item, 1) == 0){
         printf("-->write OK!\n");
     }
@@ -424,20 +424,20 @@ void PerformTests()
     };
 
     for(std::string address : addresses){
-        TS7DataItem item = S7200TS7DataItemFromAddress(address);
+        TS7DataItem item = RAMS7200TS7DataItemFromAddress(address);
         switch (item.WordLen){
             case S7WLByte:
                 if(item.Amount >1){
                     char valInitR[256], valInitW[256], valChangedW[256], valChangedR[256];
-                    S7200Read(address, &valInitR);
+                    RAMS7200Read(address, &valInitR);
                     std::memcpy(valChangedW , &valInitR , 256);
                     valChangedW[0] = valChangedW[0]+1;
-                    S7200Write(address, &valChangedW);
-                    S7200Read(address, &valChangedR);
+                    RAMS7200Write(address, &valChangedW);
+                    RAMS7200Read(address, &valChangedR);
                     Check(strcmp(valChangedW,valChangedR), ("IO :" + address).c_str());
                     std::memcpy(valInitW , &valInitR , 256);
-                    S7200Write(address, &valInitW);
-                    S7200Read(address, &valInitR);
+                    RAMS7200Write(address, &valInitW);
+                    RAMS7200Read(address, &valInitR);
                     Check(strcmp(valInitW,valInitR), ("IO re-init :" + address).c_str());
                     printf("valInitR: %s\n",valInitR);
                     printf("valInitW: %s\n",valInitW);
@@ -446,14 +446,14 @@ void PerformTests()
                 }
                 else{
                     uint8_t  valInitR, valInitW, valChangedW, valChangedR;
-                    S7200Read(address, &valInitR);
+                    RAMS7200Read(address, &valInitR);
                     valChangedW = valInitR == 1 ? 0 : 1;
-                    S7200Write(address, &valChangedW);
-                    S7200Read(address, &valChangedR);
+                    RAMS7200Write(address, &valChangedW);
+                    RAMS7200Read(address, &valChangedR);
                     Check((valChangedW==valChangedR) ? 0 : -1, ("IO :" + address).c_str());
                     valInitW = valInitR;
-                    S7200Write(address, &valInitW);
-                    S7200Read(address, &valInitR);
+                    RAMS7200Write(address, &valInitW);
+                    RAMS7200Read(address, &valInitR);
                     Check((valInitW==valInitR) ? 0 : -1, ("IO re-init :" + address).c_str());
                     printf("valInitR: %d\n",valInitR);
                     printf("valInitW: %d\n",valInitW);
@@ -463,14 +463,14 @@ void PerformTests()
                 break;
             case S7WLBit:{
                     uint8_t  valInitR, valInitW, valChangedW, valChangedR;
-                    S7200Read(address, &valInitR);
+                    RAMS7200Read(address, &valInitR);
                     valChangedW = valInitR == 0x0001 ? 0x0000 : 0x0001;
-                    S7200Write(address, &valChangedW);
-                    S7200Read(address, &valChangedR);
+                    RAMS7200Write(address, &valChangedW);
+                    RAMS7200Read(address, &valChangedR);
                     Check((valChangedW==valChangedR) ? 0 : -1, ("IO :" + address).c_str());
                     valInitW = valInitR;
-                    S7200Write(address, &valInitW);
-                    S7200Read(address, &valInitR);
+                    RAMS7200Write(address, &valInitW);
+                    RAMS7200Read(address, &valInitR);
                     Check((valInitW==valInitR) ? 0 : -1, ("IO re-init :" + address).c_str());
                     printf("valInitR: %d\n",valInitR);
                       //hexdump(&valInitR , sizeof(valInitR));
@@ -484,14 +484,14 @@ void PerformTests()
                 break;
             case S7WLWord:{
                     uint16_t  valInitR, valInitW, valChangedW, valChangedR;
-                    S7200Read(address, &valInitR);
+                    RAMS7200Read(address, &valInitR);
                     valChangedW = valInitR == 1 ? 0 : 1;
-                    S7200Write(address, &valChangedW);
-                    S7200Read(address, &valChangedR);
+                    RAMS7200Write(address, &valChangedW);
+                    RAMS7200Read(address, &valChangedR);
                     Check((valChangedW==valChangedR) ? 0 : -1, ("IO :" + address).c_str());
                     valInitW = valInitR;
-                    S7200Write(address, &valInitW);
-                    S7200Read(address, &valInitR);
+                    RAMS7200Write(address, &valInitW);
+                    RAMS7200Read(address, &valInitR);
                     Check((valInitW==valInitR) ? 0 : -1, ("IO re-init :" + address).c_str());
                     printf("valInitR: %d\n",valInitR);
                     printf("valInitW: %d\n",valInitW);
@@ -501,14 +501,14 @@ void PerformTests()
                 break;
             case S7WLReal:{
                     float  valInitR, valInitW, valChangedW, valChangedR;
-                    S7200Read(address, &valInitR);
+                    RAMS7200Read(address, &valInitR);
                     valChangedW = valInitR == 1.0 ? 0.0 : 1.0;
-                    S7200Write(address, &valChangedW);
-                    S7200Read(address, &valChangedR);
+                    RAMS7200Write(address, &valChangedW);
+                    RAMS7200Read(address, &valChangedR);
                     Check((valChangedW==valChangedR) ? 0 : -1, ("IO :" + address).c_str());
                     valInitW = valInitR == 1 ? 0 : 1;
-                    S7200Write(address, &valInitW);
-                    S7200Read(address, &valInitR);
+                    RAMS7200Write(address, &valInitW);
+                    RAMS7200Read(address, &valInitR);
                     Check((valInitW==valInitR) ? 0 : -1, ("IO re-init :" + address).c_str());
                     printf("valInitR: %.3f\n",valInitR);
                     printf("valInitW: %.3f\\n",valInitW);
@@ -575,17 +575,17 @@ int main(int argc, char* argv[])
 
 
 /*
-void read(std::string S7200Address)
+void read(std::string RAMS7200Address)
 {
     // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
-    int addressArea = S7200AddressGetArea(S7200Address);
-    int addressStart = S7200AddressGetStart(S7200Address);
-    int addressWordLen = S7200AddressGetWordLen(S7200Address);
-    int addressAmount = S7200AddressGetAmount(S7200Address);
-    int addressBit = S7200AddressGetBit(S7200Address);
-    byte mem[S7200DataSizeByte(addressWordLen)*addressAmount];
+    int addressArea = RAMS7200AddressGetArea(RAMS7200Address);
+    int addressStart = RAMS7200AddressGetStart(RAMS7200Address);
+    int addressWordLen = RAMS7200AddressGetWordLen(RAMS7200Address);
+    int addressAmount = RAMS7200AddressGetAmount(RAMS7200Address);
+    int addressBit = RAMS7200AddressGetBit(RAMS7200Address);
+    byte mem[RAMS7200DataSizeByte(addressWordLen)*addressAmount];
 
-    printf("-------------read S7200Address=>(addressArea, addressStart, addressWordLen, addressAmount, addressBit) : %s =>(%d, %d, %d, %d, %d)\n", S7200Address.c_str(), addressArea, addressStart, addressWordLen, addressAmount, addressBit);
+    printf("-------------read RAMS7200Address=>(addressArea, addressStart, addressWordLen, addressAmount, addressBit) : %s =>(%d, %d, %d, %d, %d)\n", RAMS7200Address.c_str(), addressArea, addressStart, addressWordLen, addressAmount, addressBit);
 
     int res;
     if(addressWordLen == S7WLBit){
@@ -598,7 +598,7 @@ void read(std::string S7200Address)
     //printf("sizeof(mem) : %d\n", sizeof(mem));
     if (res==0){
         //printf("hexdump:\n");
-        hexdump(mem, S7200DataSizeByte(addressWordLen)*addressAmount);
+        hexdump(mem, RAMS7200DataSizeByte(addressWordLen)*addressAmount);
         u_char b[] = {mem[3],mem[2],mem[1],mem[0]};
         switch(addressWordLen){
             case S7WLByte:
@@ -633,10 +633,10 @@ void read(std::string S7200Address)
 */
 
 //------------------------------------------------------------------------------
-//  Read S7200
+//  Read RAMS7200
 //------------------------------------------------------------------------------
 /*
-void ReadS7200()
+void ReadRAMS7200()
 {
     // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
     uint16_t MB;
@@ -651,10 +651,10 @@ void ReadS7200()
 */
 
 //------------------------------------------------------------------------------
-//  Write S7200
+//  Write RAMS7200
 //------------------------------------------------------------------------------
 /*
-void WriteS7200()
+void WriteRAMS7200()
 {
     // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
     uint16_t MB = 13220;
