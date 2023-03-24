@@ -20,7 +20,11 @@
 #include "Common/Constants.hxx"
 #include <ErrHdl.hxx>
 
+<<<<<<< HEAD:RAMS7200Resources.cxx
 const CharString RAMS7200Resources::SECTION_NAME = "ramS7200";
+=======
+const CharString RAMS7200Resources::SECTION_NAME = "rams7200";
+>>>>>>> update-name-improv:RAMS7200Resources.cxx
 const CharString RAMS7200Resources::TSAP_PORT_LOCAL = "localTSAP";
 const CharString RAMS7200Resources::TSAP_PORT_REMOTE = "remoteTSAP";
 const CharString RAMS7200Resources::POLLING_INTERVAL = "pollingInterval";

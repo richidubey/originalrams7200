@@ -107,7 +107,7 @@ void RAMS7200LibFacade::Poll(std::vector<std::pair<std::string, int>>& vars, std
         if(RAMS7200AddressIsValid(vars[i].first)){
             if(lastWritePerAddress.count(vars[i].first) == 0) {
                 lastWritePerAddress.insert(std::pair<std::string, std::chrono::time_point<std::chrono::steady_clock>>(vars[i].first, loopStartTime));
-                Common::Logger::globalInfo(Common::Logger::L2,"Added to lastWritePerAddress queue: address", vars[i].first.c_str());
+                Common::Logger::globalInfo(Common::Logger::L3,"Added to lastWritePerAddress queue: address", vars[i].first.c_str());
                 addresses.push_back(std::pair<std::string, void *>(vars[i].first, (void *)&vars[i].second));
             } else{
                 int fpollTime;
@@ -474,6 +474,9 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
     int socket_desc = -1;
     bool switch_to_event;
 
+    char ack_drv[] = "##DRV_ACK##\n\n";
+    char ack_pnl[] = "##PNL_ACK##";
+
     bool sock_err = false;
     struct sockaddr_in server_addr;
     
@@ -815,7 +818,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     break; 
                 }
 
-                sprintf(buffer, "##DRV_ACK##\n\n");
+                sprintf(buffer, ack_drv);
                 Common::Logger::globalInfo(Common::Logger::L1, "Sending final marker ##DRV_ACK## for User File\n");
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0);
                 
@@ -834,7 +837,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 switch_to_event = false;
 
-                sprintf(buffer, "##DRV_ACK##\n\n");
+                sprintf(buffer, ack_drv);
                     
                 iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -868,7 +871,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     if(strcmp(buffer, "Event") == 0) { //Start Receiving Event files
                         switch_to_event = true;
 
-                        sprintf(buffer, "##DRV_ACK##\n\n");
+                        sprintf(buffer, ack_drv);
                         iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
                         if(iRetSend <= 0) {
@@ -883,13 +886,13 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         continue;
                     }
 
-                    if(strlen(buffer) >=11)
-                        memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
+                    if(strlen(buffer) >= strlen(ack_pnl))
+                        memcpy( subbuffer, &buffer[strlen(buffer) - strlen(ack_pnl)], strlen(ack_pnl));
 
-                    subbuffer[11] = '\0';
+                    subbuffer[strlen(ack_pnl)] = '\0';
                     
                     
-                    if( strcmp("##PNL_ACK##", subbuffer) == 0 ) {
+                    if( strcmp(ack_pnl, subbuffer) == 0 ) {
                         Common::Logger::globalInfo(Common::Logger::L1, "LogFile treatment successfully finished.\n");
                         break;
                     }
@@ -919,7 +922,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
 
-                    sprintf(buffer, "##DRV_ACK##\n\n");
+                    sprintf(buffer, ack_drv);
                     
                     iRetSend = send(socket_desc, buffer, strlen(buffer), 0); 		
 
@@ -943,15 +946,15 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                     sock_err = false;
                     
-                    while( strcmp("##PNL_ACK##", subbuffer) != 0 ) {
+                    while( strcmp(ack_pnl, subbuffer) != 0 ) {
                         count++;
-                        //Common::Logger::globalInfo(Common::Logger::L1, "Inside loop\n");
-                        //Common::Logger::globalInfo(Common::Logger::L1, "Count is "<<count);	
+                        Common::Logger::globalInfo(Common::Logger::L2, "Inside loop\n");
+                        Common::Logger::globalInfo(Common::Logger::L2, "Count is "+ CharString(count) + "and sizeof buffer is "+ CharString(sizeof(buffer)));	
                         //Common::Logger::globalInfo(Common::Logger::L1, "After memset of buffer to 0\n");
-                        memset(buffer, 0, sizeof(buffer));
+                        std::memset(buffer, 0, sizeof(buffer));
 
-                        //Common::Logger::globalInfo(Common::Logger::L1, "Before receive on the socket\n");
-                        if( recv(socket_desc, buffer, 2048, 0) <= 0) {
+                        Common::Logger::globalInfo(Common::Logger::L2, "Before receive on the socket\n");
+                        if( recv(socket_desc, buffer, bufsize, 0) <= 0) {
                             
                             Common::Logger::globalInfo(Common::Logger::L1, "Error in socket connection.\n");
                             close(socket_desc);
@@ -970,24 +973,24 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                         //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
 
-                        if(strlen(buffer) >= 11)
-                            memcpy( subbuffer, &buffer[strlen(buffer) - 11], 11);
+                        if(strlen(buffer) >= strlen(ack_pnl))
+                            memcpy( subbuffer, &buffer[strlen(buffer) - strlen(ack_pnl)], strlen(ack_pnl));
 
-                        subbuffer[11] = '\0';
+                        subbuffer[strlen(ack_pnl)] = '\0';
 
-                        //Common::Logger::globalInfo(Common::Logger::L1, "After packet print\n");
+                        Common::Logger::globalInfo(Common::Logger::L2, "After packet print\n");
                         
-                        //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is %s \n",subbuffer);
+                        Common::Logger::globalInfo(Common::Logger::L2, "Subbuffer is ",subbuffer);
                         if( strcmp("##PNL_ACK##", subbuffer) != 0 ) {
                             //fprintf( fpLog, "%s", buffer);
                             file<<buffer;	
-                            //Common::Logger::globalInfo(Common::Logger::L1, "Written to file\n");
+                            Common::Logger::globalInfo(Common::Logger::L2, "Written to file\n");
                         } else {
-                            buffer[strlen(buffer) - 11] = '\0';
+                            buffer[strlen(buffer) - strlen(ack_pnl)] = '\0';
                             file<<buffer;	
                             //fprintf( fpLog, "%s", buffer);
                         } 		
-                        //Common::Logger::globalInfo(Common::Logger::L1, "After subbuffer comparison\n");
+                        Common::Logger::globalInfo(Common::Logger::L2, "After subbuffer comparison\n");
                         //Common::Logger::globalInfo(Common::Logger::L1, "Subbuffer is : "<<subbuffer));
                         /* 
                         if(count == 15) {

@@ -108,6 +108,7 @@ namespace Common{
     }
 
     inline void Constants::setLocalTsapPort(uint32_t port){
+        Common::Logger::globalInfo(Common::Logger::L1,"Setting TSAP_PORT_LOCAL=" + CharString(port));
         //printf("Setting TSAP_PORT_LOCAL=" + CharString(port) + "\n");
         TSAP_PORT_LOCAL = port;
     }
@@ -117,6 +118,7 @@ namespace Common{
     }
 
     inline void Constants::setRemoteTsapPort(uint32_t port){
+        Common::Logger::globalInfo(Common::Logger::L1,"Setting TSAP_PORT_REMOTE=" + CharString(port));
         //printf("Setting TSAP_PORT_REMOTE=" + CharString(port) + "\n");
         TSAP_PORT_REMOTE = port;
     }
