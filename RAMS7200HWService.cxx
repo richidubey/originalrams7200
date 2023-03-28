@@ -161,6 +161,10 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread.");
 
           aFacade.Disconnect();
+          IPAddressList.erase(ip);
+          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = false;
+          aFacade.clearLastWriteTimeList();
+
           {
             std::unique_lock<std::mutex> lck(aFacade.mutex_);
 
@@ -175,9 +179,6 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             }
             aFacade.stopCurrentFSThread = true;
           }
-          IPAddressList.erase(ip);
-          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = false;
-          aFacade.clearLastWriteTimeList();
         };    
     _pollingThreads.emplace_back(lambda);
 

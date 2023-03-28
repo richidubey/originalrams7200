@@ -97,6 +97,7 @@ void RAMS7200LibFacade::Disconnect()
 
 void RAMS7200LibFacade::clearLastWriteTimeList() {
     lastWritePerAddress.clear();
+    //clear() destroys all the elements in the map
 }
 
 void RAMS7200LibFacade::Poll(std::vector<std::pair<std::string, int>>& vars, std::chrono::time_point<std::chrono::steady_clock> loopStartTime)
