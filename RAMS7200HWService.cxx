@@ -312,7 +312,7 @@ void RAMS7200HWService::insertInDataToDp(CharString&& address, char* item)
 
 PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
 {
-//  Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__,"Incoming obj address",objPtr->getAddress());
+  Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__,"Incoming obj address",objPtr->getAddress());
 
   std::vector<std::string> addressOptions = Common::Utils::split(objPtr->getAddress().c_str());
 
