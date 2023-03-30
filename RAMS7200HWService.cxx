@@ -9,6 +9,7 @@
  * Intergovernmental Organization or submit itself to any jurisdiction.
  *
  * Author: Adrien Ledeul (HSE)
+ * Co-author: Richi Dubey (HSE)
  *
  **/
 
