@@ -9,6 +9,7 @@
  * Intergovernmental Organization or submit itself to any jurisdiction.
  *
  * Author: Adrien Ledeul (HSE)
+ * Co-author: Richi Dubey (HSE)
  *
  **/
 
@@ -161,6 +162,10 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread.");
 
           aFacade.Disconnect();
+          IPAddressList.erase(ip);
+          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = false;
+          aFacade.clearLastWriteTimeList();
+
           {
             std::unique_lock<std::mutex> lck(aFacade.mutex_);
 
@@ -175,9 +180,6 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             }
             aFacade.stopCurrentFSThread = true;
           }
-          IPAddressList.erase(ip);
-          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = false;
-          aFacade.clearLastWriteTimeList();
         };    
     _pollingThreads.emplace_back(lambda);
 
@@ -311,7 +313,7 @@ void RAMS7200HWService::insertInDataToDp(CharString&& address, char* item)
 
 PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
 {
-//  Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__,"Incoming obj address",objPtr->getAddress());
+  Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__,"Incoming obj address",objPtr->getAddress());
 
   std::vector<std::string> addressOptions = Common::Utils::split(objPtr->getAddress().c_str());
 
