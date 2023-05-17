@@ -391,7 +391,7 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
         }
     }
     else{
-        Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Connection not found");
+        Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Connection not found for IP: ", addressOptions[ADDRESS_OPTIONS_IP].c_str());
         return PVSS_FALSE;
     }
   }
