@@ -507,7 +507,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 std::unique_lock<std::mutex> lck(mutex_);
                 
                 if(stopCurrentFSThread) {
-                    Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...");
+                    Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ... IP being served by this thread was : ", ip);
                     FSThreadRunning = false;
                     CV_SwitchFSThread.notify_one();
                     delete[] ip;
@@ -517,7 +517,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
         };
 
-        Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
+        Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Writing true to DP for touch panel connection erorr status for Panel IP : ", ip);
         touch_panel_conn_error = true;
         TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
         memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -528,7 +528,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             std::unique_lock<std::mutex> lck(mutex_);
             
             if(stopCurrentFSThread) {
-                Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...");
+                Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::File Sharing Thread asked to stop. Exiting ...  IP being served by this thread was : ", ip);
                 FSThreadRunning = false;
                 CV_SwitchFSThread.notify_one();
                 close(socket_desc);
@@ -537,7 +537,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             }
         }
 
-        Common::Logger::globalInfo(Common::Logger::L2, "Connecting to ip", ip);
+        Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Connecting to ip", ip);
         Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
 
         socket_desc = socket(AF_INET, SOCK_STREAM, 0);
@@ -548,7 +548,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             return;
         }
     
-        Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::Socket created\n");	
+        Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread::Socket created to try to connect to IP: \n", ip);	
 
         //Setting socket non blocking for the connect call.
         int socket_desc_flagbf;
@@ -587,7 +587,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             }
                             struct timespec deadline = { .tv_sec = now.tv_sec + 10, .tv_nsec = now.tv_nsec }; //Set 10 second timeout
                             // Wait for the connection to complete.
-                            Common::Logger::globalInfo(Common::Logger::L1, "FSThread : Waiting upto 10 seconds");
+                            Common::Logger::globalInfo(Common::Logger::L1, "FSThread : Waiting upto 10 seconds to connect to IP", ip);
                             do {
                                 // Calculate how long until the deadline
                                 if(clock_gettime(CLOCK_MONOTONIC, &now)<0) { 
@@ -641,19 +641,19 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             //Close connection and connect again after some time
 
             if(timed_out)
-                Common::Logger::globalInfo(Common::Logger::L1, "Could not connect in 10 seconds\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Could not connect in 10 seconds to IP\n", ip);
             else
-                Common::Logger::globalInfo(Common::Logger::L1, "Error in nonblocking connect call or in getting current time\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Error in nonblocking connect call or in getting current time for IP\n", ip);
             connect_try_count++;
             close(socket_desc);
 
             if(connect_try_count > 3) {
                 //Tried three times consecutively. 
-                Common::Logger::globalInfo(Common::Logger::L1, "Trying Again in 10 seconds\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Trying Again in 10 seconds\n");
                 //Raise alarm with higher severity. Sleep for 10 seconds.
                 std::this_thread::sleep_for(std::chrono::seconds(10));
             } else {
-                Common::Logger::globalInfo(Common::Logger::L1, "Trying Again in 4 seconds\n");
+                Common::Logger::globalInfo(Common::Logger::L1, FSThread: "Trying Again in 4 seconds\n");
                 //TODO: Raise Alarm
                 std::this_thread::sleep_for(std::chrono::seconds(4));
             }
@@ -664,7 +664,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
         if( !nonblock ) {
             //Could not set the socket as non blocking. Continue with blocking connect
             if( connect(socket_desc, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0 ) {
-                Common::Logger::globalInfo(Common::Logger::L1, "Error in connecting (blocking) to Touch Panel\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Error in connecting (blocking) to Touch Panel for IP: \n", ip);
                 connect_try_count++;
                 close(socket_desc);
 
@@ -708,7 +708,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
         
         setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
         
-        Common::Logger::globalInfo(Common::Logger::L1, "Connected to Touch Panel");
+        Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Connected to Touch Panel on IP: ", ip);
 
         connect_try_count = 0;
 
@@ -716,7 +716,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             int bufsize = 1024;
             char buffer[bufsize], subbuffer[12];
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Writing false to DP for touch panel connection erorr status");
+            Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Writing false to DP for touch panel connection erorr status for TP IP: ", ip);
             touch_panel_conn_error = false;
             TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -726,9 +726,9 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 std::unique_lock <std::mutex> lck(mutex_);
                 
                 if(stopCurrentFSThread) {
-                    Common::Logger::globalInfo(Common::Logger::L1, "File Sharing Thread asked to stop. Exiting ...");
+                    Common::Logger::globalInfo(Common::Logger::L1, "FSThread: File Sharing Thread asked to stop. Exiting ... was serving IP: ",ip);
                     
-                    Common::Logger::globalInfo(Common::Logger::L1, "Writing true to DP for touch panel connection erorr status");
+                    Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Writing true to DP for touch panel connection erorr status");
                     touch_panel_conn_error = true;
                     TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
                     memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
@@ -748,21 +748,21 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 break;
             }
 
-            Common::Logger::globalInfo(Common::Logger::L2, "Waiting upto 2 minutes to receive number for handshake \n");
+            Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Waiting upto 2 minutes to receive number for handshake \n");
             memset(buffer, 0, sizeof(buffer));
 
             if( recv(socket_desc, buffer, bufsize, 0) <= 0 ) {
-                Common::Logger::globalInfo(Common::Logger::L1, "Error in receiving number for handshake from Touch Panel. \nDisconnecting.\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Error in receiving number for handshake from Touch Panel. \nDisconnecting.\n");
                 close(socket_desc);
                 break;
             }
         
             int rand_rcv = atoi(buffer);
-            Common::Logger::globalInfo(Common::Logger::L2, "Received number from client", std::to_string(rand_rcv).c_str());
+            Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Received number from client", std::to_string(rand_rcv).c_str());
 
             sprintf(buffer, "%d",rand_rcv+1);
         
-            Common::Logger::globalInfo(Common::Logger::L2, "Sending received number + 1 to client for hanshake", buffer);
+            Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Sending received number + 1 to client for hanshake", buffer);
             
             if( send(socket_desc, buffer, strlen(buffer), 0) < 0 ) {
                 Common::Logger::globalInfo(Common::Logger::L1, "Sending of rand + 1 for connection initiation failed\n");
@@ -771,9 +771,9 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 break;
             }
 
-            Common::Logger::globalInfo(Common::Logger::L2, "Number Sent");
+            Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Number Sent");
 
-            Common::Logger::globalInfo(Common::Logger::L1, "Waiting upto 2 minutes to receive message for treatment\n");
+            Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Waiting upto 2 minutes to receive message for treatment\n");
             memset(buffer, 0, sizeof(buffer));
             //Receive information about treatment 
             if( recv(socket_desc, buffer, bufsize, 0) <= 0 ) {
