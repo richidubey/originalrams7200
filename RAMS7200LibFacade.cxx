@@ -653,7 +653,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 //Raise alarm with higher severity. Sleep for 10 seconds.
                 std::this_thread::sleep_for(std::chrono::seconds(10));
             } else {
-                Common::Logger::globalInfo(Common::Logger::L1, FSThread: "Trying Again in 4 seconds\n");
+                Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Trying Again in 4 seconds\n");
                 //TODO: Raise Alarm
                 std::this_thread::sleep_for(std::chrono::seconds(4));
             }
