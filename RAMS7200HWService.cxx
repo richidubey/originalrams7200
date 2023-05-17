@@ -77,6 +77,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
         {
           Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread");
           RAMS7200LibFacade aFacade(ip, this->_configConsumeCB, this->_configErrorConsumerCB);
+          _facades[ip] = &aFacade;
           if(!aFacade.isInitialized())
           {
               Common::Logger::globalInfo(Common::Logger::L1, "Unable to initialize IP:", ip.c_str());
@@ -97,7 +98,6 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
           }
 
           if(aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) && _consumerRun) {
-            _facades[ip] = &aFacade;
             writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
             DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
             DisconnectsPerIP[ip] = 0;
