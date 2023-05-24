@@ -18,6 +18,7 @@ MYOBJS = RAMS7200Drv.o \
 	RAMS7200HWService.o \
 	RAMS7200Resources.o \
 	RAMS7200LibFacade.o \
+	RAMS7200Encryption.o \
 	RAMS7200Main.o
 
 define INSTALL_BODY
