@@ -23,9 +23,10 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <thread>
-
+#include "RAMS7200Encryption.hxx"
 #include <algorithm>
 #include <vector>
+
 
 RAMS7200LibFacade::RAMS7200LibFacade(const std::string& ip, consumeCallbackConsumer cb, errorCallbackConsumer erc = nullptr)
     : _ip(ip), _consumeCB(cb), _errorCB(erc)
@@ -790,7 +791,6 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 fpUser = fopen( (Common::Constants::getUserFilePath()).c_str(), "r");
                 
                 Common::Logger::globalInfo(Common::Logger::L1, "User File Location is:", (Common::Constants::getUserFilePath()).c_str());
-                
 
                 if(fpUser == NULL) {
                     Common::Logger::globalInfo(Common::Logger::L1, "Error in opening User File to send User data\n");
@@ -800,18 +800,61 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 sock_err = false;
 
+                unsigned char ct[8], key[8] = "123";
+                symmetric_key skey;
+                int err;
+                char pt[9];
+
+                /* schedule the key */
+                if ((err = des_setup(key, /* the key we will use */
+                                    8, /* key is 8 bytes (64-bits) long */
+                                    0, /* 0 == use default # of rounds */
+                                    &skey) /* where to put the scheduled key */
+                                    ) != CRYPT_OK) {
+                    Common::Logger::globalInfo(Common::Logger::L1, "Error in setting up the DES keys\n");
+                    close(socket_desc);
+                    break;
+                }
+
+                char temp[10];
+
                 while(fgets(buffer, sizeof(buffer), fpUser)) {
                     Common::Logger::globalInfo(Common::Logger::L2, "Line read:\n %s",buffer);
 
-                    iRetSend = send(socket_desc, buffer, strlen(buffer), 0);
+                    for(unsigned int i=0; i<strlen(buffer); i+=8) {
+                        memset(pt, 0, 8);
+                        memset(ct, 0, 8);
+
+                        if(strlen(buffer) - i > 8)
+                            memcpy(pt, &buffer[i], 8); 
+                        else 
+                            memcpy(pt, &buffer[i], strlen(buffer) - i);
+
+                        des_ecb_encrypt(reinterpret_cast<const unsigned char *>(pt), /* encrypt this 8-byte array */ct, /* store encrypted data here */ &skey); /* our previously scheduled key */
+
+                        for(int i = 0; i<8; i ++) {
+                            sprintf(temp, "%d\n", ct[i]);
+
+                            iRetSend = send(socket_desc, temp, strlen(temp), 0);
                     
-                    if(iRetSend <= 0) {
-                        //Error in sending file content. Abort this Connection
-                        Common::Logger::globalInfo(Common::Logger::L1, "Error in sending file content.\n");
-                        close(socket_desc);
-                        fclose(fpUser);
-                        sock_err = true;
-                        break;
+                            if(iRetSend <= 0) {
+                                //Error in sending file content. Abort this Connection
+                                Common::Logger::globalInfo(Common::Logger::L1, "Error in sending encrypted data.\n");
+                                close(socket_desc);
+                                fclose(fpUser);
+                                sock_err = true;
+                                break;
+                            }
+                        }
+                        
+                        if(sock_err) {
+                            break; 
+                        }
+                        
+                    }
+                
+                    if(sock_err) {
+                        break; 
                     }
                 }
 
