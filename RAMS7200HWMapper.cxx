@@ -183,14 +183,14 @@ void RAMS7200HWMapper::removeAddress(const std::string &ip, const std::string &v
     if(RAMS7200Addresses[ip].size() == 0) {
       RAMS7200IPs.erase(ip);
       RAMS7200Addresses.erase(ip);
-      Common::Logger::globalInfo(Common::Logger::L1, "All Addresses from this IP address deleted.");
+      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,  "All Addresses deleted from the IP : ", ip.c_str());
 
       while(isIPrunning[ip])
       {
-          Common::Logger::globalInfo(Common::Logger::L1, "Thread for the IP is still running. Sleeping for 1 second");
+          Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, " Sleeping for 1 second since the Polling is still running for the IP : ", ip.c_str());
           std::this_thread::sleep_for(std::chrono::seconds(1));
       }
-      Common::Logger::globalInfo(Common::Logger::L1, "Thread exited.");
+      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,"Ready to register new device as Lambda Thread exited from the polling loop for the IP : ", ip.c_str());
     }
   }
 }

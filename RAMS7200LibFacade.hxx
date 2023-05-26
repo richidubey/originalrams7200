@@ -63,6 +63,7 @@ public:
     void Poll(std::vector<std::pair<std::string, int>>&, std::chrono::time_point<std::chrono::steady_clock> loopStartTime);
     void write(std::vector<std::pair<std::string, void * >>);
     void clearLastWriteTimeList();
+    void Connect();
     void Reconnect();
 
 
