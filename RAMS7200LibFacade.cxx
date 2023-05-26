@@ -1114,12 +1114,12 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
 void RAMS7200LibFacade::startFileSharingThread(char* touchPanelIP) {
 
+    touch_panel_ip = touchPanelIP;
     std::thread startFileSharingT ([&](){
         {      
             std::unique_lock<std::mutex> lck(mutex_);
 
             if(stopCurrentFSThread) {
-                touch_panel_ip = touchPanelIP;
                 Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: There is already a thread waiting for the current thread to exit.\nUpdating the final touch panel IP address to: ", touchPanelIP);
                 return;
             }
@@ -1127,14 +1127,12 @@ void RAMS7200LibFacade::startFileSharingThread(char* touchPanelIP) {
             else if(FSThreadRunning == true) {
                 Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: Stopping the currently running File Sharing Thread");
                 stopCurrentFSThread = true;
-                touch_panel_ip = touchPanelIP;
                 CV_SwitchFSThread.wait(lck, [&]() {return !FSThreadRunning;});
-                Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: Currently running File Sharing Thread Stopped");
+                Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: Currently running File Sharing Thread Stopped. Starting new one with IP: ", touch_panel_ip);
                 stopCurrentFSThread = false;
             } 
             else {
-                touch_panel_ip = touchPanelIP;
-                Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: No threads for Touch Panel are running. Starting a new thread.");
+                Common::Logger::globalInfo(Common::Logger::L1,"startFileSharingThread: No threads for Touch Panel are running. Starting a new thread to serve TP IP :", touch_panel_ip);
             }
         }
 
