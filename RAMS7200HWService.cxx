@@ -75,12 +75,17 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
     auto lambda = [&]
         {
+          std::string IP_FIXED = ip.c_str();
           Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread");
           RAMS7200LibFacade aFacade(ip, this->_configConsumeCB, this->_configErrorConsumerCB);
           _facades[ip] = &aFacade;
+          writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
+          DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
+          DisconnectsPerIP[ip] = 0;
+          aFacade.Connect();
           if(!aFacade.isInitialized())
           {
-              Common::Logger::globalInfo(Common::Logger::L1, "Unable to initialize IP:", ip.c_str());
+              Common::Logger::globalInfo(Common::Logger::L1, "Unable to initialize IP:", IP_FIXED.c_str());
               Common::Logger::globalInfo(Common::Logger::L1, "Trying to connect again in 5 seconds");
               
               std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -94,13 +99,10 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
                   aFacade.Disconnect();
                   std::this_thread::sleep_for(std::chrono::seconds(5));
                 }
-              } while(!aFacade.isInitialized()  && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) &&_consumerRun);
+              } while(!aFacade.isInitialized()  && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) &&_consumerRun);
           }
 
-          if(aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) && _consumerRun) {
-            writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
-            DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
-            DisconnectsPerIP[ip] = 0;
+          if(aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) && _consumerRun) {
             //Write Driver version
             char* DrvVersion = new char[Common::Constants::getDrvVersion().size()];
             std::strcpy(DrvVersion, Common::Constants::getDrvVersion().c_str());
@@ -109,7 +111,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
             handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
 
-            while(_consumerRun && DisconnectsPerIP[ip] < 20 && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip))
+            while(_consumerRun && DisconnectsPerIP[IP_FIXED] < 20 && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED))
             {
               if(!RAMS7200Resources::getDisableCommands()) {
                 // The Server is Active (for redundant systems)
@@ -119,11 +121,11 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
                 auto start = std::chrono::steady_clock::now();
 
                 auto vars = static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200Addresses();
-                if(vars.find(ip) != vars.end()){
+                if(vars.find(IP_FIXED) != vars.end()){
                     //First do all the writes for this IP, then the reads
-                    aFacade.write(writeQueueForIP[ip]);
-                    writeQueueForIP[ip].clear();
-                    aFacade.Poll(vars[ip], start);                         
+                    aFacade.write(writeQueueForIP[IP_FIXED]);
+                    writeQueueForIP[IP_FIXED].clear();
+                    aFacade.Poll(vars[IP_FIXED], start);                         
                 }
                 auto end = std::chrono::steady_clock::now();
                 auto time_elapsed = end - start;
@@ -144,7 +146,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
                       Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds");
                       std::this_thread::sleep_for(std::chrono::seconds(5));
                     }
-                  } while(!aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) && _consumerRun);
+                  } while(!aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) && _consumerRun);
                   aFacade.readFailures = 0;
                 }
               } else {
@@ -154,36 +156,35 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             }
           }
 
-          if( static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(ip) == false )
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list");
-          else if (DisconnectsPerIP[ip] >= 20) 
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. Max disconnects exceeded");
+          if( static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) == false )
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list. IP: ", IP_FIXED.c_str());
+          else if (DisconnectsPerIP[IP_FIXED] >= 20) 
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. Max disconnects exceeded. IP: ", IP_FIXED.c_str());
           else
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread.");
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP: ", IP_FIXED.c_str());
 
           aFacade.Disconnect();
-          IPAddressList.erase(ip);
-          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = false;
+          IPAddressList.erase(IP_FIXED);
+          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[IP_FIXED] = false;
           aFacade.clearLastWriteTimeList();
 
           {
             std::unique_lock<std::mutex> lck(aFacade.mutex_);
 
             if(aFacade.FSThreadRunning == true) {
-              Common::Logger::globalInfo(Common::Logger::L1, "Cannot exit now. Need to wait for file sharing thread to terminate");
+              Common::Logger::globalInfo(Common::Logger::L1, "Cannot exit now. Need to wait for file sharing thread to terminate. PLC IP: ", IP_FIXED.c_str());
               
               aFacade.stopCurrentFSThread = true;
               
               aFacade.CV_SwitchFSThread.wait(lck, [&]() {aFacade.stopCurrentFSThread = true; return !aFacade.FSThreadRunning;});
               
-              Common::Logger::globalInfo(Common::Logger::L1, "File Sharing thread terminated. Exiting.");
+              Common::Logger::globalInfo(Common::Logger::L1, "File Sharing thread terminated. Exiting. PLC IP: ", IP_FIXED.c_str());
             }
             aFacade.stopCurrentFSThread = true;
           }
+          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Exiting Lambda Thread. IP: ", IP_FIXED.c_str());
         };    
     _pollingThreads.emplace_back(lambda);
-
-    //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "New IP polling started:", ip.c_str());
 }
 
 //--------------------------------------------------------------------------------

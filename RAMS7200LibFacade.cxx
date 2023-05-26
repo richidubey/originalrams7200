@@ -31,17 +31,22 @@
 RAMS7200LibFacade::RAMS7200LibFacade(const std::string& ip, consumeCallbackConsumer cb, errorCallbackConsumer erc = nullptr)
     : _ip(ip), _consumeCB(cb), _errorCB(erc)
 {
-     Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connecting to : Local TSAP Port : Remote TSAP Port'", (_ip + " : "+ std::to_string(Common::Constants::getLocalTsapPort()) + ":" + std::to_string(Common::Constants::getRemoteTsapPort())).c_str());
+     Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Initialized LibFacade with IP: ", _ip.c_str());
+}
+
+void RAMS7200LibFacade::Connect()
+{
+    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connecting to : Local TSAP Port : Remote TSAP Port'", (_ip + " : "+ std::to_string(Common::Constants::getLocalTsapPort()) + ":" + std::to_string(Common::Constants::getRemoteTsapPort())).c_str());
 
     try{
         _client = new TS7Client();
 
-        _client->SetConnectionParams(ip.c_str(), Common::Constants::getLocalTsapPort(), Common::Constants::getRemoteTsapPort());
+        _client->SetConnectionParams(_ip.c_str(), Common::Constants::getLocalTsapPort(), Common::Constants::getRemoteTsapPort());
         int res = _client->Connect();
 
 
         if (res==0) {
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connected to '", ip.c_str());
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connected to '", _ip.c_str());
             //printf("  PDU Requested  : %d bytes\n",Client->PDURequested());
             //printf("  PDU Negotiated : %d bytes\n",Client->PDULength());
             _initialized = true;
