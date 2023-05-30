@@ -16,6 +16,8 @@
 
 #include "RAMS7200FloatTrans.hxx"
 
+#include "Transformations/RAMS7200Int16Trans.hxx"
+
 #include "RAMS7200HWMapper.hxx"
 
 #include "Common/Logger.hxx"
@@ -84,7 +86,41 @@ PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len,	const V
 
 VariablePtr RAMS7200FloatTrans::toVar(const PVSSchar *buffer, const PVSSuint dlen, const PVSSuint subix) const {
 
-	if(buffer == NULL || dlen%size > 0 || dlen < size*(subix+1)){
+	if(buffer == NULL ){
+		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
+				ErrClass::ERR_PARAM, // Wrong parametrization
+				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
+				"RAMS7200FloatTrans", "toVar", // File and function name
+				"Null buffer pointer" + CharString(dlen) // Unfortunately we don't know which DP
+				);
+		return NULL;
+	}
+
+	else if(dlen == sizeof(int16_t)) {
+		Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Float var returned with Dlen 2, treating it as int16");
+		return new IntegerVar(__bswap_16((int16_t)*reinterpret_cast<const int16_t*>(buffer + (subix * size))));
+	}
+	else if(dlen%size > 0){
+		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
+				ErrClass::ERR_PARAM, // Wrong parametrization
+				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
+				"RAMS7200FloatTrans", "toVar", // File and function name
+				"Dlen mod size is gt. 0: " + CharString(dlen) // Unfortunately we don't know which DP
+				);
+		return NULL;
+	}
+
+	else if(dlen < size*(subix+1)){
+		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
+				ErrClass::ERR_PARAM, // Wrong parametrization
+				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
+				"RAMS7200FloatTrans", "toVar", // File and function name
+				"Dlen less than size mult. subix + 1: " + CharString(dlen) // Unfortunately we don't know which DP
+				);
+		return NULL;
+	}
+
+	else if(buffer == NULL || dlen%size > 0 || dlen < size*(subix+1)){
 		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
 				ErrClass::ERR_PARAM, // Wrong parametrization
 				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
