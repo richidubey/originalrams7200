@@ -824,7 +824,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                 char temp[10];
 
                 while(fgets(buffer, sizeof(buffer), fpUser)) {
-                    Common::Logger::globalInfo(Common::Logger::L2, "Line read:\n %s",buffer);
+                    //Common::Logger::globalInfo(Common::Logger::L2, "Line read:\n %s",buffer);
 
                     for(unsigned int i=0; i<strlen(buffer); i+=8) {
                         memset(pt, 0, 8);
