@@ -75,6 +75,8 @@ PVSSboolean RAMS7200Int16Trans::toPeriph(PVSSchar *buffer, PVSSuint len,	const V
 
 		return PVSS_FALSE;
 	}
+
+	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200Int16Trans::toPeriph : Ineteger var received in transformation toPeriph, val is: ", std::to_string(((reinterpret_cast<const IntegerVar &>(var)).getValue())).c_str());
 	// this one is a bit special as the number is handled by wincc oa as int32, but we handle it as 16 bit  integer
 	// thus any info above the 16 first bits is lost
 	reinterpret_cast<int16_t *>(buffer)[subix] = ReverseInt16(reinterpret_cast<const IntegerVar &>(var).getValue());

@@ -75,6 +75,7 @@ public:
     TS7DataItem RAMS7200Write(std::string RAMS7200Address, void* val);
     static int getByteSizeFromAddress(std::string RAMS7200Address);
     std::map<std::string, std::chrono::time_point<std::chrono::steady_clock> > lastWritePerAddress;
+    void RAMS7200MarkDeviceConnectionError(std::string, bool);
     static TS7DataItem RAMS7200TS7DataItemFromAddress(std::string RAMS7200Address);
     
     static bool RAMS7200AddressIsValid(std::string RAMS7200Address);
