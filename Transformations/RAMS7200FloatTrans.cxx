@@ -81,7 +81,9 @@ PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len, const V
 	}
 
 	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200FloatTrans::toPeriph : Float var received in transformation toPeriph, val is: ", std::to_string(((float)(reinterpret_cast<const FloatVar &>(var)).getValue())).c_str());
+	Common::Logger::globalInfo(Common::Logger::L2,"Len of float val is: ", (std::to_string(len)).c_str());
 	reinterpret_cast<float *>(buffer)[subix] = ReverseFloat((float)(reinterpret_cast<const FloatVar &>(var)).getValue());
+	//reinterpret_cast<float *>(buffer)[subix] = ((float)(reinterpret_cast<const FloatVar &>(var)).getValue());
 
 	return PVSS_TRUE;
 }

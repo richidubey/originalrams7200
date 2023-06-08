@@ -375,7 +375,8 @@ TS7DataItem RAMS7200Write(std::string RAMS7200Address, void* val)
 //------------------------------------------------------------------------------
 bool CliConnect()
 {
-    Client->SetConnectionParams(Address, 0x1001, 0x1000);
+    Client->SetConnectionParams(Address, 0x1101, 0x1100);
+    printf("Trying to connect to %s", Address);
     int res = Client->Connect();
     if (Check(res,"UNIT Connection")) {
           printf("  Connected to   : %s (Rack=%d, Slot=%d)\n",Address,Rack,Slot);
@@ -398,7 +399,9 @@ void PerformTests()
 {
     std::string addresses[] = {
         "VW1984", //VW1984=13220
-        "VB2978.20", //VB2978.20='29 1-035'
+        "VB2978.20", //VB2978.20='29 1-035',
+        "VW2000",
+        "VW2002"
         "VB1604", //VB1604=8
         "V1604.2", //V1604.2=0
         "V1604.3", //V1604.3=1
@@ -410,7 +413,7 @@ void PerformTests()
         "V2641.02",
         "V2641.04",
         "V2641.06",
-        "M10.0", //M10.0=1
+        //"M10.0", //M10.0=1
         //"M10.1", //M10.1=0 Read-only?
         //"E0.0", //E0.0=1 Read-only?
         //"E1.1", //E0.0=0 Read-only?
@@ -428,6 +431,7 @@ void PerformTests()
         switch (item.WordLen){
             case S7WLByte:
                 if(item.Amount >1){
+                    printf("Item.amount is : %d\n", item.Amount);
                     char valInitR[256], valInitW[256], valChangedW[256], valChangedR[256];
                     RAMS7200Read(address, &valInitR);
                     std::memcpy(valChangedW , &valInitR , 256);
@@ -653,16 +657,16 @@ void ReadRAMS7200()
 //------------------------------------------------------------------------------
 //  Write RAMS7200
 //------------------------------------------------------------------------------
-/*
-void WriteRAMS7200()
-{
-    // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
-    uint16_t MB = 13220;
-    uint16_t MBswaped = (MB>>8) | (MB<<8);
-    int res=Client->WriteArea(S7AreaDB, 1, 1984, 1, S7WLWord, &MBswaped);
-    printf("Write VW1984 Result : %d\n",res);
-    if (res==0){
-        printf("Write VW1984 value : %X\n", MB);
-        printf("Write VW1984 value : %d\n", MB);
-    }
-}
+
+// void WriteRAMS7200()
+// {
+//     // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
+//     uint16_t MB = 13220;
+//     uint16_t MBswaped = (MB>>8) | (MB<<8);
+//     int res=Client->WriteArea(S7AreaDB, 1, 1984, 1, S7WLWord, &MBswaped);
+//     printf("Write VW1984 Result : %d\n",res);
+//     if (res==0){
+//         printf("Write VW1984 value : %X\n", MB);
+//         printf("Write VW1984 value : %d\n", MB);
+//     }
+// }

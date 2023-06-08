@@ -393,7 +393,7 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
               returnInt[0] = IntToConvert[1];
               returnInt[1] = IntToConvert[0];
 
-            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write integer, Correct val is: ", to_string(retVal).c_str());
+            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write integer, Correct val is: ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else if(length == 4){
             char *correctval = new char[sizeof(float)];
@@ -415,12 +415,12 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
             returnFloat[3] = floatToConvert[0];
 
 
-            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write float, Correct val is:  ", to_string(retVal).c_str());
+            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write float, Correct val is:  ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else {
             char *correctval = new char[length];
             std::memcpy(correctval, objPtr->getDataPtr(), length);
-            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write non integer/float: ", correctval);
+            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write non integer/float: ", correctval);
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           }
 
