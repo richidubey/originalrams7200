@@ -67,7 +67,7 @@ float ReverseFloat( const float inFloat )
 }
 
 
-PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len,	const Variable &var, const PVSSuint subix) const {
+PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len, const Variable &var, const PVSSuint subix) const {
 
 	if(var.isA() != FLOAT_VAR){
 		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
@@ -79,6 +79,8 @@ PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len,	const V
 
 		return PVSS_FALSE;
 	}
+
+	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200FloatTrans::toPeriph : Float var received in transformation toPeriph, val is: ", std::to_string(((float)(reinterpret_cast<const FloatVar &>(var)).getValue())).c_str());
 	reinterpret_cast<float *>(buffer)[subix] = ReverseFloat((float)(reinterpret_cast<const FloatVar &>(var)).getValue());
 
 	return PVSS_TRUE;

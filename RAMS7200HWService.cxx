@@ -60,7 +60,7 @@ void RAMS7200HWService::handleConsumerConfigError(const std::string& ip, int cod
 
 void RAMS7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-  if( (ip.compare("VERSION") == 0) || (var.compare("touchConError") == 0) )
+  if( (ip.compare("VERSION") == 0) || (var.compare("touchConError") == 0) || (var.compare("_Error") == 0) )
     insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
   else 
     //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
@@ -80,15 +80,16 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
           RAMS7200LibFacade aFacade(ip, this->_configConsumeCB, this->_configErrorConsumerCB);
           _facades[ip] = &aFacade;
           writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
-          DisconnectsPerIP.insert(std::pair< std::string, int >( ip, 0));
-          DisconnectsPerIP[ip] = 0;
           aFacade.Connect();
+
           if(!aFacade.isInitialized())
           {
               Common::Logger::globalInfo(Common::Logger::L1, "Unable to initialize IP:", IP_FIXED.c_str());
               Common::Logger::globalInfo(Common::Logger::L1, "Trying to connect again in 5 seconds");
               
               std::this_thread::sleep_for(std::chrono::seconds(5));
+
+              aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, true);
               
               do {
                 //Try to connect again.
@@ -111,7 +112,9 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
             Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
             handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
 
-            while(_consumerRun && DisconnectsPerIP[IP_FIXED] < 20 && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED))
+            aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
+
+            while(_consumerRun && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED))
             {
               if(!RAMS7200Resources::getDisableCommands()) {
                 // The Server is Active (for redundant systems)
@@ -136,7 +139,9 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
                 if(aFacade.readFailures > 5) {
                   Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "More than 5 read failures, Disconnecting");
-                  
+
+                  aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, true);
+
                   do {
                     //Disconnect and try to connect again.
                     aFacade.Disconnect();
@@ -148,6 +153,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
                     }
                   } while(!aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) && _consumerRun);
                   aFacade.readFailures = 0;
+                  aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
                 }
               } else {
                 // The Server is Passive (for redundant systems)
@@ -158,10 +164,10 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
           if( static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) == false )
             Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list. IP: ", IP_FIXED.c_str());
-          else if (DisconnectsPerIP[IP_FIXED] >= 20) 
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. Max disconnects exceeded. IP: ", IP_FIXED.c_str());
+          else if(!_consumerRun)
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. All threads were asked to stop. This looping thread was for IP: ", IP_FIXED.c_str()); 
           else
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP: ", IP_FIXED.c_str());
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. A different reason. This looping thread was for IP: ", IP_FIXED.c_str()); 
 
           aFacade.Disconnect();
           IPAddressList.erase(IP_FIXED);
@@ -294,10 +300,7 @@ void RAMS7200HWService::workProc()
           Common::Logger::globalInfo(Common::Logger::L1,"Problem in sending item's value to PVSS");
         }
     } else {
-        DisconnectsPerIP[addressOptions[ADDRESS_OPTIONS_IP]]++;
-        Common::Logger::globalInfo(Common::Logger::L1,"Problem in getting HWObject for the address," + pair.first +"increasing disconnect count");
-        Common::Logger::globalInfo(Common::Logger::L1,"Now disconnect count is : ", std::to_string(DisconnectsPerIP[addressOptions[ADDRESS_OPTIONS_IP]]).c_str());
-        
+        Common::Logger::globalInfo(Common::Logger::L1,"Problem in getting HWObject for the address: " + pair.first);   
     }
   }
 }
@@ -377,14 +380,47 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
           if(length == 2) {
             char *correctval = new char[sizeof(int16_t)];
             std::memcpy(correctval, objPtr->getDataPtr(), sizeof(int16_t));
+
+            int16_t* checkVal = reinterpret_cast<int16_t*> (correctval);
+
+            const int16_t inInt16 = *checkVal;
+            
+              int16_t retVal;
+              char *IntToConvert = ( char* ) & inInt16;
+              char *returnInt = ( char* ) & retVal;
+
+              // swap the bytes into a temporary buffer
+              returnInt[0] = IntToConvert[1];
+              returnInt[1] = IntToConvert[0];
+
+            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write integer, Correct val is: ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else if(length == 4){
             char *correctval = new char[sizeof(float)];
             std::memcpy(correctval, objPtr->getDataPtr(), sizeof(float));
+            
+
+            float *checkVal = reinterpret_cast<float*> (correctval);
+
+            const float inFloat = *checkVal;
+           
+            float retVal;
+            char *floatToConvert = ( char* ) & inFloat;
+            char *returnFloat = ( char* ) & retVal;
+
+            // swap the bytes into a temporary buffer
+            returnFloat[0] = floatToConvert[3];
+            returnFloat[1] = floatToConvert[2];
+            returnFloat[2] = floatToConvert[1];
+            returnFloat[3] = floatToConvert[0];
+
+
+            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write float, Correct val is:  ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else {
             char *correctval = new char[length];
             std::memcpy(correctval, objPtr->getDataPtr(), length);
+            Common::Logger::globalInfo(Common::Logger::L1,"Received request to write non integer/float: ", correctval);
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           }
 

@@ -76,6 +76,7 @@ PVSSboolean RAMS7200Int32Trans::toPeriph(PVSSchar *buffer, PVSSuint len, const V
 
 		return PVSS_FALSE;
 	}
+	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200Int32Trans::toPeriph : Integer32 var received in transformation toPeriph, val is: ", std::to_string(((reinterpret_cast<const IntegerVar &>(var)).getValue())).c_str());
 	reinterpret_cast<int32_t *>(buffer)[subix] = ReverseInt32(reinterpret_cast<const IntegerVar &>(var).getValue());
 	return PVSS_TRUE;
 }

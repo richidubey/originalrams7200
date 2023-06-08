@@ -335,6 +335,17 @@ TS7DataItem RAMS7200LibFacade::RAMS7200TS7DataItemFromAddress(std::string RAMS72
     return item;
 }
 
+void RAMS7200LibFacade::RAMS7200MarkDeviceConnectionError(string ip, bool error_status){
+    if(error_status)
+        Common::Logger::globalInfo(Common::Logger::L1, "Request from LambdaThread: Writing true to DPE for PLC connection erorr for PLC IP : ", ip.c_str());
+    else
+        Common::Logger::globalInfo(Common::Logger::L1, "Request from LambdaThread: Writing false to DPE for PLC connection erorr for PLC IP : ", ip.c_str());
+    
+    TS7DataItem PLC_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("_Error");
+    memcpy(PLC_Conn_Stat_item.pdata, &error_status , sizeof(bool));
+    this->_consumeCB(ip, "_Error", "", reinterpret_cast<char*>(PLC_Conn_Stat_item.pdata));
+}
+
 float ReverseFloat( const float inFloat )
 {
    float retVal;
