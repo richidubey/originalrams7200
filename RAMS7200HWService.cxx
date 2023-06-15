@@ -114,6 +114,8 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
             aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
 
+            auto first_time = std::chrono::steady_clock::now();
+
             while(_consumerRun && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED))
             {
               if(!RAMS7200Resources::getDisableCommands()) {
@@ -127,6 +129,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
                 if(vars.find(IP_FIXED) != vars.end()){
                     //First do all the writes for this IP, then the reads
                     aFacade.write(writeQueueForIP[IP_FIXED]);
+                    aFacade.markForNextRead(writeQueueForIP[IP_FIXED], first_time);
                     writeQueueForIP[IP_FIXED].clear();
                     aFacade.Poll(vars[IP_FIXED], start);                         
                 }

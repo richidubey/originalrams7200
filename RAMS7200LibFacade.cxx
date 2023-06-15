@@ -160,6 +160,15 @@ void RAMS7200LibFacade::write(std::vector<std::pair<std::string, void *>> addres
     }
 }
 
+void RAMS7200LibFacade::markForNextRead(std::vector<std::pair<std::string, void *>> addresses, std::chrono::time_point<std::chrono::steady_clock> loopFirstStartTime) {
+    for(auto & PairAddress: addresses) {
+         if(RAMS7200AddressIsValid(PairAddress.first)){
+            if(lastWritePerAddress.count(PairAddress.first) != 0) {
+                lastWritePerAddress[PairAddress.first] = loopFirstStartTime;
+            }
+         }
+    }
+}
 
 int RAMS7200LibFacade::RAMS7200AddressGetWordLen(std::string RAMS7200Address)
 {
