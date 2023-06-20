@@ -47,14 +47,7 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
   // in this example we use the ones from Pbus, as those can be selected
   // with the SIM driver parametrization panel
 
-  if( Common::Utils::split((confPtr->getName()).c_str())[1][1] == 'W')
-  {  confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
-    Common::Logger::globalInfo(Common::Logger::L3,"Setting Int Transformation for VW var");
-  }
-
-  else {
-
-    switch ((uint32_t)confPtr->getTransformationType()) {
+  switch ((uint32_t)confPtr->getTransformationType()) {
     case TransUndefinedType:
         Common::Logger::globalInfo(Common::Logger::L1,"Undefined transformation" + CharString(confPtr->getTransformationType()));
         return HWMapper::addDpPa(dpId, confPtr);
@@ -85,8 +78,8 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
     default:
         Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
         return HWMapper::addDpPa(dpId, confPtr);
-    }
   }
+
 
   // First add the config, then the HW-Object
   if ( !HWMapper::addDpPa(dpId, confPtr) )  // FAILED !! 
