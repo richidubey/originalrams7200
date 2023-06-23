@@ -548,7 +548,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
         TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
         memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
 
-        this->_consumeCB(_ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+        this->_consumeCB(_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
 
         {
             std::unique_lock<std::mutex> lck(mutex_);
@@ -746,7 +746,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             touch_panel_conn_error = false;
             TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
-            this->_consumeCB(_ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+            this->_consumeCB(_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
 
              {
                 std::unique_lock <std::mutex> lck(mutex_);
@@ -758,7 +758,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     touch_panel_conn_error = true;
                     TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
                     memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
-                    this->_consumeCB(_ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+                    this->_consumeCB(_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
 
                     FSThreadRunning = false;
                     CV_SwitchFSThread.notify_one();
@@ -1107,7 +1107,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             touch_panel_conn_error = true;
                             TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
                             memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
-                            this->_consumeCB(_ip, "touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+                            this->_consumeCB(_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
 
                             FSThreadRunning = false;
                             CV_SwitchFSThread.notify_all();

@@ -60,7 +60,7 @@ void RAMS7200HWService::handleConsumerConfigError(const std::string& ip, int cod
 
 void RAMS7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-  if( (ip.compare("VERSION") == 0) || (var.compare("touchConError") == 0) || (var.compare("_Error") == 0) )
+  if( (ip.compare("_VERSION") == 0) || (var.compare("_touchConError") == 0) || (var.compare("_Error") == 0) )
     insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
   else 
     //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
@@ -110,7 +110,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
             std::this_thread::sleep_for(std::chrono::seconds(3)); //Give some time for the driver to load the addresses.
             Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
-            handleConsumeNewMessage("VERSION", "STRING", "", DrvVersion);
+            handleConsumeNewMessage("_VERSION", "_STRING", "", DrvVersion);
 
             aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
 
@@ -264,7 +264,7 @@ void RAMS7200HWService::workProc()
     std::vector<std::string> addressOptions = Common::Utils::split(pair.first.c_str());
     obj.setAddress(pair.first);
 
-    if(strcmp(pair.first.c_str(), "VERSION$STRING") == 0) {
+    if(strcmp(pair.first.c_str(), "_VERSION$_STRING") == 0) {
         Common::Logger::globalInfo(Common::Logger::L2,"For driver version, writing to WinCCOA value ", pair.second);
     }
 
@@ -290,7 +290,7 @@ void RAMS7200HWService::workProc()
         //Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
         obj.setDlen(dataLengh); // lengh
 
-        if(strcmp(pair.first.c_str(), "VERSION$STRING") == 0) {
+        if(strcmp(pair.first.c_str(), "_VERSION$_STRING") == 0) {
             obj.setDlen(4);
             Common::Logger::globalInfo(Common::Logger::L2,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
             Common::Logger::globalInfo(Common::Logger::L2,"Data length is ", std::to_string(dataLengh).c_str());
@@ -331,7 +331,7 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
       {
         Common::Logger::globalInfo(Common::Logger::L1,"Incoming CONFIG address",objPtr->getAddress(), objPtr->getInfo() );
         
-        if(addressOptions[ADDRESS_OPTIONS_IP].compare("DEBUGLVL") == 0) {
+        if(addressOptions[ADDRESS_OPTIONS_IP].compare("_DEBUGLVL") == 0) {
           int16_t* retVal = new int16_t;
           char *IntToConvert = ( char* )objPtr->getDataPtr();
 
@@ -339,10 +339,12 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
           retVal[0] = IntToConvert[1];
           retVal[1] = IntToConvert[0];
 
-          Common::Logger::globalInfo(Common::Logger::L1,"Incoming CONFIG address",objPtr->getAddress(), std::to_string(*retVal).c_str());
+          Common::Logger::globalInfo(Common::Logger::L1,"Received DebugLvl change request to value: ", std::to_string(*retVal).c_str());
 
-          if(*retVal > 0 && *retVal  < 4)
-            Common::Constants::GetParseMap().at(std::string(objPtr->getAddress().c_str()))((char *)retVal);
+          if(*retVal > 0 && *retVal  < 4) {
+              Common::Constants::GetParseMap().at(std::string(objPtr->getAddress().c_str()))((char *)retVal);
+              Common::Logger::globalInfo(Common::Logger::L1,"Set Debug level successfully to : ", std::to_string(*retVal).c_str());
+          } 
           
           return PVSS_TRUE;
         }
@@ -364,7 +366,7 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
 
     if(_facades.find(addressOptions[ADDRESS_OPTIONS_IP]) != _facades.end()){
         if(!RAMS7200LibFacade::RAMS7200AddressIsValid(addressOptions[ADDRESS_OPTIONS_VAR])){
-          if(addressOptions[ADDRESS_OPTIONS_VAR].compare("PANEL_IP")) {
+          if(addressOptions[ADDRESS_OPTIONS_VAR].compare("_PANEL_IP")) {
             Common::Logger::globalWarning("Not a valid Var for address", objPtr->getAddress().c_str());
             return PVSS_FALSE;
           } else {

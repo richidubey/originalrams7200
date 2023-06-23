@@ -81,6 +81,9 @@ public:
     void markForNextRead(std::vector<std::pair<std::string, void *>> addresses, std::chrono::time_point<std::chrono::steady_clock> loopFirstStartTime);
     
     static bool RAMS7200AddressIsValid(std::string RAMS7200Address);
+    static int RAMS7200AddressGetWordLen(std::string RAMS7200Address);
+    static int RAMS7200AddressGetAmount(std::string RAMS7200Address);
+    
     void startFileSharingThread(char* touchPanelIP);
     void FileSharingTask(char* ip, int port);
 
@@ -101,10 +104,8 @@ private:
     errorCallbackConsumer _errorCB;
     bool _initialized{false};
     TS7Client *_client;
-    static int RAMS7200AddressGetWordLen(std::string RAMS7200Address);
     static int RAMS7200AddressGetStart(std::string RAMS7200Address);
     static int RAMS7200AddressGetArea(std::string RAMS7200Address);
-    static int RAMS7200AddressGetAmount(std::string RAMS7200Address);
     static int RAMS7200AddressGetBit(std::string RAMS7200Address);
     static int RAMS7200DataSizeByte(int WordLength);
     static void RAMS7200DisplayTS7DataItem(PS7DataItem item);
