@@ -47,37 +47,71 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
   // in this example we use the ones from Pbus, as those can be selected
   // with the SIM driver parametrization panel
 
-  switch ((uint32_t)confPtr->getTransformationType()) {
-    case TransUndefinedType:
-        Common::Logger::globalInfo(Common::Logger::L1,"Undefined transformation" + CharString(confPtr->getTransformationType()));
-        return HWMapper::addDpPa(dpId, confPtr);
-    case RAMS7200DrvBoolTransType:
-          Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
-          confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
-          break;
-    case RAMS7200DrvUint8TransType:
-        Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
-        confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
-        break;
-    case RAMS7200DrvInt32TransType:
-        Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
-        confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
-        break;
-    case RAMS7200DrvInt16TransType:
-        Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
-        confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
-        break;
-    case RAMS7200DrvFloatTransType:
-        Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
-        confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
-        break;
-    case RAMS7200DrvStringTransType:
-          Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
-          confPtr->setTransform(new Transformations::RAMS7200StringTrans);
-          break;
-    default:
-        Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
-        return HWMapper::addDpPa(dpId, confPtr);
+  std::string recvdAddress(Common::Utils::split((confPtr->getName()).c_str())[1]);
+
+  if(RAMS7200LibFacade::RAMS7200AddressIsValid(recvdAddress)) {
+    if(RAMS7200LibFacade::RAMS7200AddressGetAmount(recvdAddress) > 1) {
+      Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
+      confPtr->setTransform(new Transformations::RAMS7200StringTrans);
+    } else {
+      switch(RAMS7200LibFacade::RAMS7200AddressGetWordLen(recvdAddress)) {
+        case S7WLBit: 
+            Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
+            confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
+            break;
+        case S7WLByte:
+            Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
+            confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
+            break;
+        case S7WLWord:
+            Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
+            confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
+            break;
+        case S7WLReal:  
+            Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
+            confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
+            break;
+        default :
+            Common::Logger::globalError("RAMS7200HWMapper::addDpPa",CharString("Illegal (Unexpected) address : ") +  CharString(confPtr->getName()));
+            return HWMapper::addDpPa(dpId, confPtr);
+      }
+    }
+  } else if(Common::Utils::split((confPtr->getName()).c_str())[1][0] == '_'){ //Special Addresses
+      switch ((uint32_t)confPtr->getTransformationType()) {
+        case TransUndefinedType:
+            Common::Logger::globalInfo(Common::Logger::L1,"Undefined transformation" + CharString(confPtr->getTransformationType()));
+            return HWMapper::addDpPa(dpId, confPtr);
+        case RAMS7200DrvBoolTransType:
+              Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
+              confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
+              break;
+        case RAMS7200DrvUint8TransType:
+            Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
+            confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
+            break;
+        case RAMS7200DrvInt32TransType:
+            Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
+            confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
+            break;
+        case RAMS7200DrvInt16TransType:
+            Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
+            confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
+            break;
+        case RAMS7200DrvFloatTransType:
+            Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
+            confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
+            break;
+        case RAMS7200DrvStringTransType:
+              Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
+              confPtr->setTransform(new Transformations::RAMS7200StringTrans);
+              break;
+        default:
+            Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
+            return HWMapper::addDpPa(dpId, confPtr);
+      }
+  } else {
+    Common::Logger::globalError("RAMS7200HWMapper::addDpPa",CharString("Illegal (Unexpected) address : ") +  CharString(confPtr->getName()));
+    return HWMapper::addDpPa(dpId, confPtr);
   }
 
 
