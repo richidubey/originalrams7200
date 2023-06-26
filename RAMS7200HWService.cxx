@@ -60,7 +60,10 @@ void RAMS7200HWService::handleConsumerConfigError(const std::string& ip, int cod
 
 void RAMS7200HWService::handleConsumeNewMessage(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)
 {
-  if( (ip.compare("_VERSION") == 0) || (var.compare("_touchConError") == 0) || (var.compare("_Error") == 0) )
+  if(ip.compare("_VERSION") == 0)  {
+    insertInDataToDp(std::move(CharString((ip).c_str())), payload);  //Config DPs do not have a polling time or an IP address associated with them in the address.
+  }
+  else if( (var.compare("_touchConError") == 0) || (var.compare("_Error") == 0) )
     insertInDataToDp(std::move(CharString((ip + "$" + var ).c_str())), payload);  //Config DPs do not have a polling time associated with them in the address.
   else 
     //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip + ":" + var + ":" + payload).c_str());
@@ -110,7 +113,7 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 
             std::this_thread::sleep_for(std::chrono::seconds(3)); //Give some time for the driver to load the addresses.
             Common::Logger::globalInfo(Common::Logger::L1, "Sent Driver version: ", DrvVersion);
-            handleConsumeNewMessage("_VERSION", "_STRING", "", DrvVersion);
+            handleConsumeNewMessage("_VERSION", "", "", DrvVersion);
 
             aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
 
@@ -264,7 +267,7 @@ void RAMS7200HWService::workProc()
     std::vector<std::string> addressOptions = Common::Utils::split(pair.first.c_str());
     obj.setAddress(pair.first);
 
-    if(strcmp(pair.first.c_str(), "_VERSION$_STRING") == 0) {
+    if(strcmp(pair.first.c_str(), "_VERSION") == 0) {
         Common::Logger::globalInfo(Common::Logger::L2,"For driver version, writing to WinCCOA value ", pair.second);
     }
 
@@ -282,18 +285,18 @@ void RAMS7200HWService::workProc()
         //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, pair.first, pair.second);
         //addrObj->debugPrint();
         obj.setOrgTime(TimeVar());  // current time
-        int dataLengh = RAMS7200LibFacade::getByteSizeFromAddress(Common::Utils::split(pair.first.c_str())[1]);
+        
+        if(strcmp(pair.first.c_str(), "_VERSION") == 0) {
+          obj.setDlen(4);
+          Common::Logger::globalInfo(Common::Logger::L2,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
+        } else {
+          int dataLengh = RAMS7200LibFacade::getByteSizeFromAddress(Common::Utils::split(pair.first.c_str())[1]);
 
-        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA first ", pair.first.  c_str());
-        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA second ", pair.second );
-        //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA thirds ", std::to_string(dataLengh).c_str());
-        //Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
-        obj.setDlen(dataLengh); // lengh
-
-        if(strcmp(pair.first.c_str(), "_VERSION$_STRING") == 0) {
-            obj.setDlen(4);
-            Common::Logger::globalInfo(Common::Logger::L2,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
-            Common::Logger::globalInfo(Common::Logger::L2,"Data length is ", std::to_string(dataLengh).c_str());
+          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA first ", pair.first.  c_str());
+          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA second ", pair.second );
+          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA thirds ", std::to_string(dataLengh).c_str());
+          //Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
+          obj.setDlen(dataLengh); // lengh
         }
 
         obj.setData((PVSSchar*)pair.second); //data
@@ -324,8 +327,8 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
 
   std::vector<std::string> addressOptions = Common::Utils::split(objPtr->getAddress().c_str());
 
-  // CONFIG DPs have just 2
-  if(addressOptions.size() == 2)
+  // CONFIG DPs have just 1
+  if(addressOptions.size() == 1)
   {
       try
       {
