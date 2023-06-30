@@ -44,6 +44,7 @@ class RAMS7200HWMapper : public HWMapper
     std::unordered_set<std::string> RAMS7200IPs;
     
     std::map<std::string, std::vector<std::pair<std::string, int>>> RAMS7200Addresses;
+    std::map<std::string,  int> addressCounter; //For counting the number of times an address has been added
 
     enum Direction
     {
