@@ -259,7 +259,7 @@ void RAMS7200HWService::workProc()
   //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Size", CharString(_toDPqueue.size()));
   while (!_toDPqueue.empty())
   {
-
+    //Common::Logger::globalInfo(Common::Logger::L3,__PRETTY_FUNCTION__, CharString("There are ") + (to_string((_toDPqueue.size()))).c_str() + CharString(" elements to process"));
     auto pair = std::move(_toDPqueue.front());
     _toDPqueue.pop();
     //        Common::Logger::globalInfo(Common::Logger::L1,"For Request, First element is ", pair.first);
