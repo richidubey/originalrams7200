@@ -740,7 +740,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
         while(1) { //Connected to client - keep waiting for either User message or Logfile message
             int bufsize = 1024;
-            char buffer[bufsize], subbuffer[12];
+            char buffer[bufsize], subbuffer[12], lastMsg[bufsize];
 
             Common::Logger::globalInfo(Common::Logger::L1, "FSThread: Writing false to DP for touch panel connection erorr status for TP IP: ", ip);
             touch_panel_conn_error = false;
@@ -1040,11 +1040,22 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         Common::Logger::globalInfo(Common::Logger::L2, "Packet number ", std::to_string(count).c_str());
                         Common::Logger::globalInfo(Common::Logger::L2, " is : ", buffer);
 
+                        Common::Logger::globalInfo(Common::Logger::L2, "strlen of buffer is :", to_string(strlen(buffer)).c_str());
+
                         //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
 
                         if(strlen(buffer) >= strlen(ack_pnl))
                             memcpy( subbuffer, &buffer[strlen(buffer) - strlen(ack_pnl)], strlen(ack_pnl));
+                        else {
+                            if(strlen(lastMsg) >= (strlen(ack_pnl) - strlen(buffer))) {
+                                Common::Logger::globalInfo(Common::Logger::L2, "lastmsg is \n: ", lastMsg);
+                                memcpy(subbuffer, &lastMsg[strlen(lastMsg) - (strlen(ack_pnl) - strlen(buffer))], strlen(ack_pnl) - strlen(buffer));
+                                strcpy(&subbuffer[strlen(ack_pnl) - strlen(buffer)], buffer);
+                            }
+                        }
 
+                        strcpy(lastMsg, buffer);
+                        lastMsg[strlen(buffer)] = '\0';
                         subbuffer[strlen(ack_pnl)] = '\0';
 
                         Common::Logger::globalInfo(Common::Logger::L2, "After packet print\n");
@@ -1054,9 +1065,29 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             //fprintf( fpLog, "%s", buffer);
                             file<<buffer;	
                             Common::Logger::globalInfo(Common::Logger::L2, "Written to file\n");
+        
+                            
                         } else {
-                            buffer[strlen(buffer) - strlen(ack_pnl)] = '\0';
-                            file<<buffer;	
+                            if(strlen(buffer) >= strlen(ack_pnl)) {                           
+                                buffer[strlen(buffer) - strlen(ack_pnl)] = '\0';
+                                file<<buffer;	
+                            } else {
+                                std::ifstream rFile(nFile); 
+                                std::stringstream dupBuffer;
+                                dupBuffer << rFile.rdbuf();
+
+                                std::string contents = dupBuffer.str();
+
+                                rFile.close();
+                                
+                                for(unsigned int i=0; i <(strlen(ack_pnl) - strlen(buffer)); i++)
+                                    contents.pop_back();
+                                
+                                file.seekp(0);
+                                file<<contents;
+                                Common::Logger::globalInfo(Common::Logger::L2, CharString("Did not write this msg to file and deleted the last ") + (to_string((strlen(ack_pnl) - strlen(buffer)))).c_str() + CharString(" characters from the file\n"));
+                            }
+
                             //fprintf( fpLog, "%s", buffer);
                         } 		
                         Common::Logger::globalInfo(Common::Logger::L2, "After subbuffer comparison\n");
