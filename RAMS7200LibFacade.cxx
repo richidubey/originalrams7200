@@ -1023,7 +1023,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         std::memset(buffer, 0, sizeof(buffer));
 
                         Common::Logger::globalInfo(Common::Logger::L2, "Before receive on the socket\n");
-                        if( recv(socket_desc, buffer, bufsize, 0) <= 0) {
+                        if( recv(socket_desc, buffer, bufsize - 1 , 0) <= 0) { //Keep space for 1 termination char
                             
                             Common::Logger::globalInfo(Common::Logger::L1, "Error in socket connection.\n");
                             close(socket_desc);
@@ -1054,7 +1054,10 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             }
                         }
 
+
+
                         strcpy(lastMsg, buffer);
+                        buffer[strlen(buffer)] = '\0';
                         lastMsg[strlen(buffer)] = '\0';
                         subbuffer[strlen(ack_pnl)] = '\0';
 
