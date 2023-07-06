@@ -966,7 +966,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
 
-                    Common::Logger::globalInfo(Common::Logger::L1, "Received Full File Name: ", buffer);
+                    Common::Logger::globalInfo(Common::Logger::L1, CharString("From TP IP: ") + ip + CharString("Received Full File Name: "), buffer);
                     
 
                     char *nFile = new char[75];
@@ -1054,8 +1054,6 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             }
                         }
 
-
-
                         strcpy(lastMsg, buffer);
                         buffer[strlen(buffer)] = '\0';
                         lastMsg[strlen(buffer)] = '\0';
@@ -1068,8 +1066,6 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             //fprintf( fpLog, "%s", buffer);
                             file<<buffer;	
                             Common::Logger::globalInfo(Common::Logger::L2, "Written to file\n");
-        
-                            
                         } else {
                             if(strlen(buffer) >= strlen(ack_pnl)) {                           
                                 buffer[strlen(buffer) - strlen(ack_pnl)] = '\0';
@@ -1127,7 +1123,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                         break;
                     }
                     
-                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file receipt: ##DRV_ACK##");
+                    Common::Logger::globalInfo(Common::Logger::L1, "Sent confirmation marker of file receipt: ##DRV_ACK## to TP IP: ", ip);
                     
                     file.close();
 
