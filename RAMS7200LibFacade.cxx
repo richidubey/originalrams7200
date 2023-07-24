@@ -494,7 +494,7 @@ void RAMS7200LibFacade::RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string
 int RAMS7200LibFacade::getByteSizeFromAddress(std::string RAMS7200Address)
 {
     TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
-    delete[] item.pdata;
+    delete[] static_cast<char *>(item.pdata);
     return (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
 }
 
