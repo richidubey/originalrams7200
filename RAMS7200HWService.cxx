@@ -271,7 +271,6 @@ void RAMS7200HWService::workProc()
         Common::Logger::globalInfo(Common::Logger::L2,"For driver version, writing to WinCCOA value ", pair.second);
     }
 
-
 //    // a chance to see what's happening
 //    if ( Resources::isDbgFlag(Resources::DBG_DRV_USR1) )
 //      obj.debugPrint();
@@ -348,7 +347,7 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
               Common::Constants::GetParseMap().at(std::string(objPtr->getAddress().c_str()))((char *)retVal);
               Common::Logger::globalInfo(Common::Logger::L1,"Set Debug level successfully to : ", std::to_string(*retVal).c_str());
           } 
-          
+          delete retVal;
           return PVSS_TRUE;
         }
         

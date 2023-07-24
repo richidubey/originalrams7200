@@ -370,16 +370,26 @@ float ReverseFloat( const float inFloat )
    return retVal;
 }
 
+
+TS7DataItem RAMS7200LibFacade::initializeIfMissVar(string address) {
+    if(VarItems.count(address) == 0)
+        VarItems.insert( std::pair<string, TS7DataItem>(address, RAMS7200TS7DataItemFromAddress(address)) );
+    else 
+        VarItems[address].pdata = new char[RAMS7200DataSizeByte(VarItems[address].WordLen )*VarItems[address].Amount];
+
+    return VarItems[address];
+}
+
 void RAMS7200LibFacade::RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string, void *>> validVars, uint N, int PDU_SZ, int VAR_OH, int MSG_OH, int rorw) {
     try{
         uint last_index = 0;
         uint to_send = 0;
 
-        TS7DataItem *item = new TS7DataItem[validVars.size()];
+        TS7DataItem item[validVars.size()];
 
         for(uint i = 0; i < validVars.size(); i++) {
            // Common::Logger::globalInfo(Common::Logger::L1,"Getting item with address", validVars[i].first.c_str());
-            item[i] = RAMS7200TS7DataItemFromAddress(validVars[i].first);
+            item[i] = initializeIfMissVar(validVars[i].first);
             
             if(rorw == 1) {
                 int memSize = (RAMS7200DataSizeByte(item[i].WordLen )*item[i].Amount);
@@ -484,6 +494,7 @@ void RAMS7200LibFacade::RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string
 int RAMS7200LibFacade::getByteSizeFromAddress(std::string RAMS7200Address)
 {
     TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
+    delete[] item.pdata;
     return (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
 }
 

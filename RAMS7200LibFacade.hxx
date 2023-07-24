@@ -95,6 +95,7 @@ public:
     char* touch_panel_ip;
 
     bool touch_panel_conn_error = true; //Not connected initially
+    std::map <std::string, TS7DataItem> VarItems;
 
 private:
     //std::unique_ptr<Consumer> _consumer;
@@ -109,6 +110,8 @@ private:
     static int RAMS7200AddressGetBit(std::string RAMS7200Address);
     static int RAMS7200DataSizeByte(int WordLength);
     static void RAMS7200DisplayTS7DataItem(PS7DataItem item);
+    TS7DataItem initializeIfMissVar(std::string);
+    
     
 };
 

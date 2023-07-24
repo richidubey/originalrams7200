@@ -37,7 +37,6 @@ namespace Common {
             {
                 Common::Logger::globalInfo(Common::Logger::L1, "setLogLvl:", std::to_string(*data).c_str());
                 Common::Logger::setLogLvl(std::stoi(std::to_string(*data)));
-
             }
         }
         
