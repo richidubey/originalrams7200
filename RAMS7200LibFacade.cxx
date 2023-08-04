@@ -456,7 +456,7 @@ void RAMS7200LibFacade::RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string
                 //printf("Read/Write %d items\n", to_send);
 
                 if(rorw == 0) {
-                    Common::Logger::globalInfo(Common::Logger::L3, "Read OK");
+                    Common::Logger::globalInfo(Common::Logger::L3, "Read OK for PLC IP: ", _ip.c_str());
                 
                     for(uint i = last_index; i < last_index + to_send; i++) {
                         int a;
@@ -464,18 +464,18 @@ void RAMS7200LibFacade::RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string
                         this->_consumeCB(_ip, validVars[i].first, std::to_string(a), reinterpret_cast<char*>(item[i].pdata));
                     }
                 } else {
-                    Common::Logger::globalInfo(Common::Logger::L1, "Write OK");
+                    Common::Logger::globalInfo(Common::Logger::L1, "Write OK for PLC IP: ", _ip.c_str());
                 }
             }
             else{
                 if(rorw == 0) {
                     //printf("-->Read NOK!, Tried to read %d elements with total requesting size: %d .retOpt is %d\n", to_send, curr_sum + MSG_OH, retOpt);
-                    Common::Logger::globalInfo(Common::Logger::L1, "-->Read NOK");
+                    Common::Logger::globalInfo(Common::Logger::L1, "RAMS7200ReadWriteMaxN -->Read NOK for PLC IP: ", _ip.c_str());
                     readFailures++;
                 }
                 else {
                     //printf("-->Write NOK!, Tried to write %d elements with total requesting size: %d .retOpt is %d\n", to_send, curr_sum + MSG_OH, retOpt);
-                    Common::Logger::globalInfo(Common::Logger::L1, "-->Write NOK");
+                    Common::Logger::globalInfo(Common::Logger::L1, "RAMS7200ReadWriteMaxN -->Read NOK for PLC IP: ", _ip.c_str());
                 }
             }
             
