@@ -47,7 +47,7 @@ private:
     void handleNewIPAddress(const std::string& ip);
 
     errorCallbackConsumer _configErrorConsumerCB{[this](const std::string& ip, int err, const std::string& reason) { this->handleConsumerConfigError(ip, err, reason);}};
-    consumeCallbackConsumer  _configConsumeCB{[this](const std::string& ip, const std::string& var, const std::string& pollTime, char* payload){this->handleConsumeNewMessage(ip, var, pollTime,std::move(payload));}};
+    consumeCallbackConsumer  _configConsumeCB{[this](const std::string& ip, const std::string& var, const std::string& pollTime, char* payload){this->handleConsumeNewMessage(ip, var, pollTime,payload);}};
     std::function<void(const std::string&)> _newIPAddressCB{[this](const std::string& ip){this->handleNewIPAddress(ip);}};
 
     //Common

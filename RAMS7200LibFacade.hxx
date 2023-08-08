@@ -53,7 +53,7 @@ public:
      * @param ip : the ip
      * @param consumeCallbackConsumer : a callback that will be called for eached polled message
      * */
-    RAMS7200LibFacade(const std::string& ip, consumeCallbackConsumer, errorCallbackConsumer);
+    RAMS7200LibFacade(const std::string& ip, const std::string& tp_ip, consumeCallbackConsumer, errorCallbackConsumer);
     void Disconnect();
 
     RAMS7200LibFacade(const RAMS7200LibFacade&) = delete;
@@ -99,7 +99,8 @@ public:
 
 private:
     //std::unique_ptr<Consumer> _consumer;
-    std::string _ip;
+    std::string _ip; 
+    std::string _tp_ip; 
 
     consumeCallbackConsumer _consumeCB;
     errorCallbackConsumer _errorCB;
