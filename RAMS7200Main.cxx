@@ -53,8 +53,6 @@ int main(int argc, char **argv)
   RAMS7200Drv *driver = nullptr;
 
   try{
-
-
       // handle std. signals
       signal(SIGINT, Manager::sigHdl);
       signal(SIGTERM, Manager::sigHdl);
