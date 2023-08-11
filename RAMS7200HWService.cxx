@@ -90,8 +90,8 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
           writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
           aFacade.Connect();
 
-          char *touchPanelIP = new char[TP_IP.length()];
-          TP_IP.copy(touchPanelIP ,TP_IP.length());
+          char *touchPanelIP = new char[TP_IP.length() + 1];
+          strcpy(touchPanelIP, TP_IP.c_str());
           aFacade.startFileSharingThread(touchPanelIP);
 
           if(!aFacade.isInitialized())

@@ -24,7 +24,7 @@ namespace Common {
     uint32_t Constants::TSAP_PORT_LOCAL = 0;                // Read from PVSS on driver startup from config file
     uint32_t Constants::TSAP_PORT_REMOTE = 0;               // Read from PVSS on driver startupconfig file
     size_t Constants::POLLING_INTERVAL = 1;                 // Read from PVSS on driver startupconfig file
-    std::string Constants::drv_version = "2.0";
+    std::string Constants::drv_version = "2.1";
     std::string MEASUREMENT_PATH = "/opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/";
     std::string EVENT_PATH = "/opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/";
     std::string USERFILE_PATH = "/opt/ramdev/PVSS_projects/REMUS_TEST/data/usr/in/User.dat";
