@@ -112,6 +112,9 @@ private:
     static int RAMS7200DataSizeByte(int WordLength);
     static void RAMS7200DisplayTS7DataItem(PS7DataItem item);
     TS7DataItem initializeIfMissVar(std::string);
+
+    void writeTouchConnErrDPE(char*, bool);
+    int checkIfFSNeedsToStop(char*);
     
     
 };

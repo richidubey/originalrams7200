@@ -63,11 +63,8 @@ void RAMS7200LibFacade::Reconnect()
  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Reconnecting to : Local TSAP Port : Remote TSAP Port'", (_ip + " : "+ std::to_string(Common::Constants::getLocalTsapPort()) + ":" + std::to_string(Common::Constants::getRemoteTsapPort())).c_str());
 
     try{
-        _client = new TS7Client();
-
         _client->SetConnectionParams(_ip.c_str(), Common::Constants::getLocalTsapPort(), Common::Constants::getRemoteTsapPort());
         int res = _client->Connect();
-
 
         if (res==0) {
             Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connected to '", _ip.c_str());
@@ -88,7 +85,6 @@ void RAMS7200LibFacade::Disconnect()
 
     try{
         int res = _client->Disconnect();
-
 
         if (res==0) {
             Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Disconnected successfully from '", _ip.c_str());
@@ -497,6 +493,40 @@ int RAMS7200LibFacade::getByteSizeFromAddress(std::string RAMS7200Address)
     return (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
 }
 
+void writeTouchConnErrDPE(char *ip, bool val) {
+    
+    touch_panel_conn_error = val;
+    
+    if(touch_panel_conn_error)
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "FSThread: Writing true to DP for touch panel connection erorr status for Panel IP : ", ip);
+    else 
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "FSThread: Writing false to DP for touch panel connection erorr status for Panel IP : ", ip);
+
+    TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
+    memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
+    this->_consumeCB(_ip+ ";" + _tp_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
+
+}
+
+int checkIfFSNeedsToStop(char* ip){
+
+    {
+        std::unique_lock<std::mutex> lck(mutex_);
+        
+        if(stopCurrentFSThread) {
+            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "File Sharing Thread asked to stop. Exiting ...  IP being served by this thread was : ", ip);
+            writeTouchConnErrDPE(ip, true);
+            FSThreadRunning = false;
+            CV_SwitchFSThread.notify_one();
+            close(socket_desc);
+            delete[] ip;
+            return 1;
+        } else { 
+            return 0;
+        }
+    }
+}
+
 
 void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
     
@@ -539,39 +569,14 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             // If the Server is Passive (for redundant systems)
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
-            {
-                std::unique_lock<std::mutex> lck(mutex_);
-                
-                if(stopCurrentFSThread) {
-                    Common::Logger::globalInfo(Common::Logger::L1, "FSThread: File Sharing Thread asked to stop. Exiting and writing true to DPE for TP Conn Error. Was serving IP: ",ip);
-                    FSThreadRunning = false;
-                    CV_SwitchFSThread.notify_one();
-                    delete[] ip;
-                    return;
-                }
-            }
-
+            if(checkIfNeedToStop(ip))
+                return;
         };
 
-        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "FSThread: Writing true to DP for touch panel connection erorr status for Panel IP : ", ip);
-        touch_panel_conn_error = true;
-        TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
-        memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
+        writeTouchConnErrDPE(ip, true);
 
-        this->_consumeCB(_ip+ ";" + _tp_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
-
-        {
-            std::unique_lock<std::mutex> lck(mutex_);
-            
-            if(stopCurrentFSThread) {
-                Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "File Sharing Thread asked to stop. Exiting ...  IP being served by this thread was : ", ip);
-                FSThreadRunning = false;
-                CV_SwitchFSThread.notify_one();
-                close(socket_desc);
-                delete[] ip;
-                return;
-            }
-        }
+        if(checkIfNeedToStop(ip))
+            return;
 
         Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Connecting to ip", ip);
         Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
@@ -773,6 +778,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     CV_SwitchFSThread.notify_one();
                     close(socket_desc);
                     delete[] ip;
+                    delete[] nFile;
                     return;
                 }
             }
@@ -930,6 +936,8 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
 
                 Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Accomodating LogFile Treatment of TP IP: ", ip);	
 
+                char *nFile = new char[75];
+
                 while(1) { //Keep receiving name of files
                     
                     Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Waiting to receive filename from TP IP: ", ip);
@@ -975,9 +983,6 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     }
 
                     Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,CharString("From TP IP: ") + ip + CharString("Received Full File Name: "), buffer);
-                    
-
-                    char *nFile = new char[75];
 
                     if(switch_to_event)
                         strcpy(nFile, (Common::Constants::getEventFilePath()).c_str());
@@ -1149,6 +1154,7 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                             CV_SwitchFSThread.notify_all();
                             close(socket_desc);
                             delete[] ip;
+                            delete[] nFile;
                             return;
                         }
                     }
