@@ -87,12 +87,11 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
           Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread for PLC+PANEL IP:" + CharString(ip.c_str()));
           RAMS7200LibFacade aFacade(PLC_IP, TP_IP, this->_configConsumeCB, this->_configErrorConsumerCB);
           _facades[ip] = &aFacade;
+          
           writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
+          
           aFacade.Connect();
-
-          char *touchPanelIP = new char[TP_IP.length() + 1];
-          strcpy(touchPanelIP, TP_IP.c_str());
-          aFacade.startFileSharingThread(touchPanelIP);
+          aFacade.startFileSharingThread();
 
           if(!aFacade.isInitialized())
           {

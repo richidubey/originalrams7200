@@ -84,15 +84,14 @@ public:
     static int RAMS7200AddressGetWordLen(std::string RAMS7200Address);
     static int RAMS7200AddressGetAmount(std::string RAMS7200Address);
     
-    void startFileSharingThread(char* touchPanelIP);
-    void FileSharingTask(char* ip, int port);
+    void startFileSharingThread();
+    void FileSharingTask(int port);
 
     bool FSThreadRunning = false;
     bool stopCurrentFSThread = false;
     std::condition_variable CV_SwitchFSThread;
     std::mutex mutex_;
     int readFailures = 0; //allowed since C++11
-    char* touch_panel_ip;
 
     bool touch_panel_conn_error = true; //Not connected initially
     std::map <std::string, TS7DataItem> VarItems;
@@ -113,8 +112,8 @@ private:
     static void RAMS7200DisplayTS7DataItem(PS7DataItem item);
     TS7DataItem initializeIfMissVar(std::string);
 
-    void writeTouchConnErrDPE(char*, bool);
-    int checkIfFSNeedsToStop(char*);
+    void writeTouchConnErrDPE(bool);
+    int checkIfFSNeedsToStop();
     
     
 };
