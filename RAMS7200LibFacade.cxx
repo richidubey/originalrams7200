@@ -518,7 +518,6 @@ int RAMS7200LibFacade::checkIfFSNeedsToStop(char* ip){
             writeTouchConnErrDPE(ip, true);
             FSThreadRunning = false;
             CV_SwitchFSThread.notify_one();
-            close(socket_desc);
             delete[] ip;
             return 1;
         } else { 
