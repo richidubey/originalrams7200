@@ -493,7 +493,7 @@ int RAMS7200LibFacade::getByteSizeFromAddress(std::string RAMS7200Address)
     return (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
 }
 
-void writeTouchConnErrDPE(char *ip, bool val) {
+void RAMS7200LibFacade::writeTouchConnErrDPE(char *ip, bool val) {
     
     touch_panel_conn_error = val;
     
@@ -502,13 +502,13 @@ void writeTouchConnErrDPE(char *ip, bool val) {
     else 
         Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "FSThread: Writing false to DP for touch panel connection erorr status for Panel IP : ", ip);
 
-    TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
+    TS7DataItem TouchPan_Conn_Stat_item = RAMS7200TS7DataItemFromAddress("touchConnError");
     memcpy(TouchPan_Conn_Stat_item.pdata, &touch_panel_conn_error , sizeof(bool));
     this->_consumeCB(_ip+ ";" + _tp_ip, "_touchConError", "", reinterpret_cast<char*>(TouchPan_Conn_Stat_item.pdata));
 
 }
 
-int checkIfFSNeedsToStop(char* ip){
+int RAMS7200LibFacade::checkIfFSNeedsToStop(char* ip){
 
     {
         std::unique_lock<std::mutex> lck(mutex_);
@@ -569,14 +569,18 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
             // If the Server is Passive (for redundant systems)
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
-            if(checkIfNeedToStop(ip))
+            if(checkIfFSNeedsToStop(ip)) {
+                close(socket_desc);
                 return;
+            }
         };
 
         writeTouchConnErrDPE(ip, true);
 
-        if(checkIfNeedToStop(ip))
+        if(checkIfFSNeedsToStop(ip)) {
+            close(socket_desc);
             return;
+        }
 
         Common::Logger::globalInfo(Common::Logger::L2, "FSThread: Connecting to ip", ip);
         Common::Logger::globalInfo(Common::Logger::L2, "on port", std::to_string(port).c_str()); 
@@ -778,7 +782,6 @@ void RAMS7200LibFacade::FileSharingTask(char* ip, int port) {
                     CV_SwitchFSThread.notify_one();
                     close(socket_desc);
                     delete[] ip;
-                    delete[] nFile;
                     return;
                 }
             }
