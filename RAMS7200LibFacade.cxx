@@ -783,7 +783,7 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
 
             sprintf(buffer, "%d",rand_rcv+1);
         
-            Common::Logger::globalInfo(Common::Logger::L2, __PRETTY_FUNCTION__,"FSThread: Sending received number + 1 to client for hanshake", buffer);
+            Common::Logger::globalInfo(Common::Logger::L2, __PRETTY_FUNCTION__,"FSThread: Sending received number + 1 to client for handshake", buffer);
             
             if( send(socket_desc, buffer, strlen(buffer), 0) < 0 ) {
                 Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Sending of rand + 1 for connection initiation failed hence Closing connection for TP IP", ip);

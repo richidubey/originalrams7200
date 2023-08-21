@@ -27,6 +27,41 @@
 #include "Common/Utils.hxx"
 #include <PVSSMacros.hxx>     // DEBUG macros
 
+
+int usePriorTransformation(PeriphAddr *confPtr) {
+  switch ((uint32_t)confPtr->getTransformationType()) {
+    case TransUndefinedType:
+      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Undefined transformation" + CharString(confPtr->getTransformationType()) +", For address: "+ confPtr->getName());
+      return 0;
+    case RAMS7200DrvBoolTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
+      confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
+      return 1;
+    case RAMS7200DrvUint8TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
+      return 1;
+    case RAMS7200DrvInt32TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
+      return 1;
+    case RAMS7200DrvInt16TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
+      return 1;
+    case RAMS7200DrvFloatTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
+      confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
+      return 1;
+    case RAMS7200DrvStringTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
+      confPtr->setTransform(new Transformations::RAMS7200StringTrans);
+      return 1;
+    default:
+      Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
+      return 0;
+  }
+}
 //--------------------------------------------------------------------------------
 // We get new configs here. Create a new HW-Object on arrival and insert it.
 
@@ -49,38 +84,9 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
   std::vector<std::string> spltDol = Common::Utils::split((confPtr->getName()).c_str());
 
   if(spltDol.size() == 1) {
-    switch ((uint32_t)confPtr->getTransformationType()) {
-        case TransUndefinedType:
-            Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Undefined transformation" + CharString(confPtr->getTransformationType()) +", For address: "+ confPtr->getName());
-            return HWMapper::addDpPa(dpId, confPtr);
-        case RAMS7200DrvBoolTransType:
-              Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
-              confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
-              break;
-        case RAMS7200DrvUint8TransType:
-            Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
-            confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
-            break;
-        case RAMS7200DrvInt32TransType:
-            Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
-            confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
-            break;
-        case RAMS7200DrvInt16TransType:
-            Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
-            confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
-            break;
-        case RAMS7200DrvFloatTransType:
-            Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
-            confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
-            break;
-        case RAMS7200DrvStringTransType:
-              Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
-              confPtr->setTransform(new Transformations::RAMS7200StringTrans);
-              break;
-        default:
-            Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
-            return HWMapper::addDpPa(dpId, confPtr);
-      }
+    If(!usePriorTransformation(confPtr)) {
+      return HWMapper::addDpPa(dpId, confPtr);
+    }
   } else {
   std::string recvdAddress(spltDol[1]);
 
