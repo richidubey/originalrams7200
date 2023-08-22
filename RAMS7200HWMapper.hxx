@@ -39,6 +39,8 @@ class RAMS7200HWMapper : public HWMapper
     bool checkIPExist(std::string);
 
   private:
+    int usePriorTransformation(PeriphAddr *confPtr);
+    int useDerivedTransformation(PeriphAddr *confPtr, std::string recvdAddress);
     void addAddress(const std::string &ip, const std::string &var, const std::string &pollTime);
     void removeAddress(const std::string& ip, const std::string& var, const std::string &pollTime);
     std::unordered_set<std::string> RAMS7200IPs;

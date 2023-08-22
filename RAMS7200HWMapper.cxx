@@ -28,7 +28,7 @@
 #include <PVSSMacros.hxx>     // DEBUG macros
 
 
-int usePriorTransformation(PeriphAddr *confPtr) {
+int RAMS7200HWMapper::usePriorTransformation(PeriphAddr *confPtr) {
   switch ((uint32_t)confPtr->getTransformationType()) {
     case TransUndefinedType:
       Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Undefined transformation" + CharString(confPtr->getTransformationType()) +", For address: "+ confPtr->getName());
@@ -63,7 +63,7 @@ int usePriorTransformation(PeriphAddr *confPtr) {
   }
 }
 
-int useDerivedTransformation(PeriphAddr *confPtr, std::string recvdAddress) {
+int  RAMS7200HWMapper::useDerivedTransformation(PeriphAddr *confPtr, std::string recvdAddress) {
    if(RAMS7200LibFacade::RAMS7200AddressGetAmount(recvdAddress) > 1) {
       Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
       confPtr->setTransform(new Transformations::RAMS7200StringTrans);
