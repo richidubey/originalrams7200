@@ -916,7 +916,7 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
 
                 Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Accomodating LogFile Treatment of TP IP: ", ip);	
 
-                char *nFile = new char[75];
+                char nFile[75];
 
                 while(1) { //Keep receiving name of files
                     
@@ -994,7 +994,6 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
                         close(socket_desc);
                         //fclose(fpLog);
                         file.close();
-                        remove(nFile);
                         sock_err = true;
                         break;
                     }
@@ -1017,13 +1016,10 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
 
                         Common::Logger::globalInfo(Common::Logger::L2, "Before receive on the socket\n");
                         if( recv(socket_desc, buffer, bufsize - 1 , 0) <= 0) { //Keep space for 1 termination char
-                            
                             Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,"Error in socket connection with TP IP: ",ip);
                             close(socket_desc);
                             sock_err = true;
                             file.close();
-                            //fclose(fpLog); 
-                            remove(nFile);
                             break;
                         }
                         
@@ -1122,7 +1118,6 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
 
                     if(checkIfFSNeedsToStop()) {
                         close(socket_desc);
-                        delete[] nFile;
                         return;
                     }
                     //fclose(fpLog);

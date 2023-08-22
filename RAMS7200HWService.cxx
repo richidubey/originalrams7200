@@ -399,13 +399,13 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
 
             const int16_t inInt16 = *checkVal;
             
-              int16_t retVal;
-              char *IntToConvert = ( char* ) & inInt16;
-              char *returnInt = ( char* ) & retVal;
+            int16_t retVal;
+            char *IntToConvert = ( char* ) & inInt16;
+            char *returnInt = ( char* ) & retVal;
 
-              // swap the bytes into a temporary buffer
-              returnInt[0] = IntToConvert[1];
-              returnInt[1] = IntToConvert[0];
+            // swap the bytes into a temporary buffer
+            returnInt[0] = IntToConvert[1];
+            returnInt[1] = IntToConvert[0];
 
             Common::Logger::globalInfo(Common::Logger::L2,"Received request to write integer, Correct val is: ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
@@ -413,7 +413,6 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
             char *correctval = new char[sizeof(float)];
             std::memcpy(correctval, objPtr->getDataPtr(), sizeof(float));
             
-
             float *checkVal = reinterpret_cast<float*> (correctval);
 
             const float inFloat = *checkVal;
@@ -427,7 +426,6 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
             returnFloat[1] = floatToConvert[2];
             returnFloat[2] = floatToConvert[1];
             returnFloat[3] = floatToConvert[0];
-
 
             Common::Logger::globalInfo(Common::Logger::L2,"Received request to write float, Correct val is:  ", to_string(retVal).c_str());
             wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
