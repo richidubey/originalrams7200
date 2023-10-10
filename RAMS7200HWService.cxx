@@ -348,29 +348,11 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
       try
       {
         Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Incoming CONFIG address" + CharString(objPtr->getAddress()) + " : " +CharString(objPtr->getInfo()) );
-        
-        if(addressOptions[ADDRESS_OPTIONS_IP].compare("_DEBUGLVL") == 0) {
-          int16_t* retVal = new int16_t;
-          char *IntToConvert = ( char* )objPtr->getDataPtr();
-
-          // swap the bytes into a temporary buffer
-          retVal[0] = IntToConvert[1];
-          retVal[1] = IntToConvert[0];
-
-          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Received DebugLvl change request to value: " + CharString(std::to_string(*retVal).c_str()));
-
-          if(*retVal > 0 && *retVal  < 4) {
-              Common::Constants::GetParseMap().at(std::string(objPtr->getAddress().c_str()))((char *)retVal);
-              Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Set Debug level successfully to : ", std::to_string(*retVal).c_str());
-          } 
-          delete retVal;
-          return PVSS_TRUE;
-        }
-        
+        Common::Constants::GetParseMap().at(std::string(objPtr->getAddress().c_str()))((const char*)objPtr->getData());
       }
       catch (std::exception& e)
       {
-          Common::Logger::globalWarning(__PRETTY_FUNCTION__," No configuration handling for address:", objPtr->getAddress().c_str());
+          Common::Logger::globalWarning(__PRETTY_FUNCTION__, "No configuration handling for address:", CharString(objPtr->getAddress().c_str()) + ':' + CharString(e.what()));
       }
   }
   else if (addressOptions.size() == ADDRESS_OPTIONS_SIZE) // Output
@@ -389,51 +371,35 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
         }
         else{
           auto wrQueue = writeQueueForIP.find(addressOptions[ADDRESS_OPTIONS_IP]);
-          int length = (int)objPtr->getDlen();
+          const auto length = (int)objPtr->getDlen();
 
           if(length == 2) {
-            char *correctval = new char[sizeof(int16_t)];
+            char* correctval = new char[sizeof(int16_t)];
             std::memcpy(correctval, objPtr->getDataPtr(), sizeof(int16_t));
 
             int16_t* checkVal = reinterpret_cast<int16_t*> (correctval);
+            int16_t inInt16 = *checkVal;
 
-            const int16_t inInt16 = *checkVal;
-            
-            int16_t retVal;
-            char *IntToConvert = ( char* ) & inInt16;
-            char *returnInt = ( char* ) & retVal;
+            std::reverse(reinterpret_cast<char*>(&inInt16), reinterpret_cast<char*>(&inInt16) + sizeof(int16_t));
 
-            // swap the bytes into a temporary buffer
-            returnInt[0] = IntToConvert[1];
-            returnInt[1] = IntToConvert[0];
-
-            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write integer, Correct val is: ", to_string(retVal).c_str());
-            wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
+            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write integer, Correct val is: ", std::to_string(inInt16).c_str());
+            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else if(length == 4){
-            char *correctval = new char[sizeof(float)];
+            char* correctval = new char[sizeof(float)];
             std::memcpy(correctval, objPtr->getDataPtr(), sizeof(float));
             
-            float *checkVal = reinterpret_cast<float*> (correctval);
+            float* checkVal = reinterpret_cast<float*>(correctval);
+            float inFloat = *checkVal;
 
-            const float inFloat = *checkVal;
-           
-            float retVal;
-            char *floatToConvert = ( char* ) & inFloat;
-            char *returnFloat = ( char* ) & retVal;
+            std::reverse(reinterpret_cast<char*>(&inFloat), reinterpret_cast<char*>(&inFloat) + sizeof(float));
 
-            // swap the bytes into a temporary buffer
-            returnFloat[0] = floatToConvert[3];
-            returnFloat[1] = floatToConvert[2];
-            returnFloat[2] = floatToConvert[1];
-            returnFloat[3] = floatToConvert[0];
-
-            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write float, Correct val is:  ", to_string(retVal).c_str());
-            wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
+            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write float, Correct val is:  ", std::to_string(inFloat).c_str());
+            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           } else {
-            char *correctval = new char[length];
+            char* correctval = new char[length];
             std::memcpy(correctval, objPtr->getDataPtr(), length);
-            Common::Logger::globalInfo(Common::Logger::L2,"Received request to write non integer/float: ", correctval);
-            wrQueue->second.push_back( std::make_pair( addressOptions[ADDRESS_OPTIONS_VAR], correctval));
+            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write non integer/float: ", correctval);
+            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
           }
 
           Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Added write request to queue for Address: " + CharString(objPtr->getAddress()) + " : "+ CharString(objPtr->getInfo()) );

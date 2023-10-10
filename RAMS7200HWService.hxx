@@ -36,11 +36,11 @@ class RAMS7200HWService : public HWService
     virtual void stop();
     virtual void workProc();
     virtual PVSSboolean writeData(HWObject *objPtr);
-    std::map < std::string , std::vector< std::pair<std::string, void*> > > writeQueueForIP;
-    std::set<std::string> IPAddressList;
     int CheckIP(std::string);
 
 private:
+    std::map < std::string , std::vector< std::pair<std::string, void*> > > writeQueueForIP;
+    std::set<std::string> IPAddressList;
     void handleConsumerConfigError(const std::string&, int, const std::string&);
 
     void handleConsumeNewMessage(const std::string&, const std::string&, const std::string&, char*);

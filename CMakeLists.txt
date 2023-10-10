@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.17)
 
 project(
     WCCOARAMS7200 
-    VERSION 2.3.0
     DESCRIPTION "RAMS7200 driver for WinCC OA"
     LANGUAGES CXX
 )
+
+set(PROJECT_VERSION 2.4.dev)
 
 configure_file(config.h.in configured/config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/configured)

@@ -39,7 +39,7 @@ void RAMS7200LibFacade::Connect()
     Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Snap7: Connecting to : Local TSAP Port : Remote TSAP Port'", (_ip + " : "+ std::to_string(Common::Constants::getLocalTsapPort()) + ":" + std::to_string(Common::Constants::getRemoteTsapPort())).c_str());
 
     try{
-        _client = new TS7Client();
+        _client.reset(new TS7Client());
 
         _client->SetConnectionParams(_ip.c_str(), Common::Constants::getLocalTsapPort(), Common::Constants::getRemoteTsapPort());
         int res = _client->Connect();
@@ -166,7 +166,7 @@ void RAMS7200LibFacade::markForNextRead(std::vector<std::pair<std::string, void 
     }
 }
 
-int RAMS7200LibFacade::RAMS7200AddressGetWordLen(std::string RAMS7200Address)
+int RAMS7200LibFacade::RAMS7200AddressGetWordLen(const std::string& RAMS7200Address)
 {
     if(RAMS7200Address.length() < 2){
         return -1; //invalid
@@ -237,14 +237,14 @@ int RAMS7200LibFacade::RAMS7200AddressGetArea(std::string RAMS7200Address)
 }
 
 
-bool RAMS7200LibFacade::RAMS7200AddressIsValid(std::string RAMS7200Address){
+bool RAMS7200LibFacade::RAMS7200AddressIsValid(const std::string& RAMS7200Address){
     return RAMS7200AddressGetArea(RAMS7200Address)!=-1 && 
     RAMS7200AddressGetWordLen(RAMS7200Address)!=-1 &&
     RAMS7200AddressGetAmount(RAMS7200Address)!=-1 &&
     RAMS7200AddressGetStart(RAMS7200Address)!=-1;
 }
 
-int RAMS7200LibFacade::RAMS7200AddressGetAmount(std::string RAMS7200Address)
+int RAMS7200LibFacade::RAMS7200AddressGetAmount(const std::string& RAMS7200Address)
 {
     if(RAMS7200Address.length() < 2){
         return -1; //invalid

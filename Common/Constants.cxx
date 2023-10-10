@@ -36,8 +36,12 @@ namespace Common {
         {   "_DEBUGLVL",
             [](const char* data)
             {
-                Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "setLogLvl:", std::to_string(*data).c_str());
-                Common::Logger::setLogLvl(std::stoi(std::to_string(*data)));
+                int16_t retVal;
+                memcpy(&retVal, data, sizeof(int16_t));
+                std::reverse(reinterpret_cast<char*>(&retVal), reinterpret_cast<char*>(&retVal) + sizeof(int16_t));
+
+                Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "setLogLvl :",std::to_string(retVal).c_str());
+                Common::Logger::setLogLvl(retVal);
             }
         }
         
