@@ -15,9 +15,11 @@ WinCC OA RAMS7200 Driver
     
     3.1. [To build the driver](#toc3.1)
 
-    3.2. [To Install](#toc3.2)
+    3.2. [Build options](#toc3.2)
 
-    3.3. [Run](#toc3.3)
+    3.3. [To install and update](#toc3.3)
+
+    3.4. [Run](#toc3.4)
 
 4. [Config file](#toc4)
 
@@ -57,28 +59,84 @@ Additionally, the driver offers compatibility with multiple IP addresses, making
 <a name="toc3"></a>
 
 # 3. Compilation:
-Project has a Makefile. Note that you can also set the `PVSS_PROJ_PATH` environment variable beforehand. 
+The project is CMake enabled.
+Note that if you set the `PVSS_PROJ_PATH` environment variable beforehand, you can install and update the driver via the `install` and `update` targets.
 
 <a name="toc3.1"></a>
 
 ## 3.1 To build the driver
 
-	make
+    export PVSS_PROJ_PATH=<path_to_pvss_project_folder>
+	mkdir build
+    cd build
+    cmake ..
+    make -j
 
 <a name="toc3.2"></a>
 
-## 3.2 To install
+## 3.2 Build options
 
-	make install PVSS_PROJ_PATH=<path_to_pvss_project_bin_folder>
-    
+The default CMake build type is `Release`. The follow build types are taken into account:
+
+| Build Type | Details    |
+|------------|----------------------------------|
+| Release    | Default, 03 optimization         |
+| Debug      | gdb enabled, no optimization     |
+| Coverage   | gcov enabled, no optimization    |
+-------------------------------------------------
+
+To enable a specific build type, run:
+
+    cmake -DCMAKE_BUILD_TYPE=<build_type> ..
+
+For Code Coverage make sure you have `lcov` installed. At the end of your tests, perform the following to get the html coverage report:
+
+    make coverage
+
+If `valgrind` is installed, you can also run the tests with valgrind:
+
+    make valgrind
+Once you are done with the tests, you can stop the valgrind process with:
+
+    make kill
+
+
+<a name="toc3.3"></a>
+
+## 3.3 To install and update
+
+In order to install the driver in the `PVSS_PROJ_PATH/bin`, run:
+
+	make install
+
+Making changes to the driver and updating it are simplified by using the `update` target, triggering a `clean`, `install` (and `kill` the driver):
+
+    make update
+
+The `kill` target will simply terminate the running process. Combined with the `always` setting of the driver in WinCCOA, this will ensure that the driver is always up to date.
 
 <a name="toc3.3"></a>
 
 ## 3.3 Run
 
-It can be run from the WinCCOA Console or from command line and it will require the `config.RAMS7200` file:
+It can be run from the WinCCOA Console or from command line and it will require the `config.RAMS7200` driver_config_file:
 
-    ./WINCCOARAMS7200Drv -num <driver_number> -proj <project_name> +config config.RAMS7200
+    ./WINCCOARAMS7200Drv -num <driver_number> -proj <project_name> +config <driver_config_file>
+
+If you want to run the driver from the `build` folder (i.e. debug, coverage or valgrind mode) you can call:
+
+    make run
+
+CMake will extract/parse the following information:
+
+| Variable              | Details                                                                       |
+|-----------------------|-------------------------------------------------------------------------------|
+| project_name          | The PVSS project name from  PVSS_PROJ_PATH environment variable               |
+| driver_number         | The driver number from the $PVSS_PROJ_PATH/config/progs file. Defaults to 999.|
+| driver_config_file    | The driver config file from the $PVSS_PROJ_PATH/config/progs file.            |
+
+
+
 
 <a name="toc4"></a>
 
