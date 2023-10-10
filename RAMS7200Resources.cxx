@@ -87,7 +87,7 @@ PVSSboolean RAMS7200Resources::readSection() {
 
 			getNextEntry();
 		}
-	}catch(std::runtime_error e){
+	}catch(std::runtime_error& e){
 	 Common::Logger::globalError(e.what());
 		return PVSS_FALSE;
 	}
