@@ -26,6 +26,7 @@
 #include "RAMS7200Encryption.hxx"
 #include <algorithm>
 #include <vector>
+#include <sstream>
 
 
 RAMS7200LibFacade::RAMS7200LibFacade(const std::string& ip, const std::string& tp_ip, consumeCallbackConsumer cb, errorCallbackConsumer erc = nullptr)
@@ -366,9 +367,9 @@ float ReverseFloat( const float inFloat )
    return retVal;
 }
 
-TS7DataItem RAMS7200LibFacade::initializeIfMissVar(string address) {
+TS7DataItem RAMS7200LibFacade::initializeIfMissVar(std::string address) {
     if(VarItems.count(address) == 0)
-        VarItems.insert( std::pair<string, TS7DataItem>(address, RAMS7200TS7DataItemFromAddress(address)) );
+        VarItems.insert( std::pair<std::string, TS7DataItem>(address, RAMS7200TS7DataItemFromAddress(address)) );
     else 
         VarItems[address].pdata = new char[RAMS7200DataSizeByte(VarItems[address].WordLen )*VarItems[address].Amount];
 
@@ -1010,7 +1011,7 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
                     while( strcmp(ack_pnl, subbuffer) != 0 ) {
                         count++;
                         Common::Logger::globalInfo(Common::Logger::L2, "Inside loop\n");
-                        Common::Logger::globalInfo(Common::Logger::L2, "Count is "+ CharString(count) + "and sizeof buffer is "+ (to_string(sizeof(buffer))).c_str());	
+                        Common::Logger::globalInfo(Common::Logger::L2, "Count is "+ CharString(count) + "and sizeof buffer is "+ (std::to_string(sizeof(buffer))).c_str());	
                         //Common::Logger::globalInfo(Common::Logger::L1, "After memset of buffer to 0\n");
                         std::memset(buffer, 0, sizeof(buffer));
 
@@ -1029,7 +1030,7 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
                         Common::Logger::globalInfo(Common::Logger::L2, "Packet number ", std::to_string(count).c_str());
                         Common::Logger::globalInfo(Common::Logger::L2, " is : ", buffer);
 
-                        Common::Logger::globalInfo(Common::Logger::L2, "strlen of buffer is :", to_string(strlen(buffer)).c_str());
+                        Common::Logger::globalInfo(Common::Logger::L2, "strlen of buffer is :", std::to_string(strlen(buffer)).c_str());
 
                         //Common::Logger::globalInfo(Common::Logger::L1, "strlen is "<<strlen(buffer));
 
@@ -1073,7 +1074,7 @@ void RAMS7200LibFacade::FileSharingTask(int port) {
                                 
                                 file.seekp(0);
                                 file<<contents;
-                                Common::Logger::globalInfo(Common::Logger::L2, CharString("Did not write this msg to file and deleted the last ") + (to_string((strlen(ack_pnl) - strlen(buffer)))).c_str() + CharString(" characters from the file\n"));
+                                Common::Logger::globalInfo(Common::Logger::L2, CharString("Did not write this msg to file and deleted the last ") + (std::to_string((strlen(ack_pnl) - strlen(buffer)))).c_str() + CharString(" characters from the file\n"));
                             }
 
                             //fprintf( fpLog, "%s", buffer);

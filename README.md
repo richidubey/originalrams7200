@@ -265,4 +265,4 @@ Available via the WinCC OA `CONFIG_RAMS7200` DataPoint, we have the following
 
 ## 6.4 Activity Diagram ##
 
-![](./doc/RAMS7200Design.png)
+![](./doc/RAMS7200Design.svg)

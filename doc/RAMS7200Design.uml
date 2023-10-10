@@ -46,7 +46,7 @@ fork
         endif
         stop
     }
-    partition kafkaHWService::workProc() {
+    partition RAMS7200HWService::workProc() {
         start
         while (<b>_toDPqueue</b> items to process?) is (yes)
             if (item addressed in the driver?) then (yes)
