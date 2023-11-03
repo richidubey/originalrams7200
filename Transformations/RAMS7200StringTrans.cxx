@@ -15,6 +15,7 @@
 // Our transformation class PVSS <--> Hardware
 #include "RAMS7200StringTrans.hxx"
 #include <ErrHdl.hxx>     // The Error handler Basics/Utilities
+#include <TextVar.hxx>    // The TextVar class
 
 
 #include "RAMS7200HWMapper.hxx"

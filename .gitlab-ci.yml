@@ -1,0 +1,4 @@
+include:
+  project: hse-see-co/WCCDrivers/WCCDrivers
+  ref: master
+  file: CI/driver.yml

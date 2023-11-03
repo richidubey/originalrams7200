@@ -1,0 +1,3 @@
+[submodule "external/libsnap7"]
+	path = external/libsnap7
+	url = ssh://git@gitlab.cern.ch:7999/hse-see-co/WCCDrivers/mirrors/libsnap7.git
