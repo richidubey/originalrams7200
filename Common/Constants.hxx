@@ -53,8 +53,8 @@ namespace Common{
         static void setRemoteTsapPort(uint32_t port);
         static const uint32_t& getRemoteTsapPort();
 
-        static void setPollingInterval(size_t pollingInterval);
-        static const size_t& getPollingInterval();
+        static void setPollingInterval(uint32_t pollingInterval);
+        static const uint32_t& getPollingInterval();
         
         static void setUserFilePath(std::string);
         static std::string& getUserFilePath();
@@ -66,18 +66,20 @@ namespace Common{
         static std::string& getEventFilePath();
 
         static const std::map<std::string,std::function<void(const char *)>>& GetParseMap();
-        static std::string MEASUREMENT_PATH;
-        static std::string EVENT_PATH;
-        static std::string USERFILE_PATH;
-    
+
+        static uint32_t getMsCopyPort();
+
     private:
         static std::string drv_name;
         static std::string drv_version;
-
+        static std::string MEASUREMENT_PATH;
+        static std::string EVENT_PATH;
+        static std::string USERFILE_PATH;
         static uint32_t DRV_NO;   // WinCC OA manager number
         static uint32_t TSAP_PORT_LOCAL;
         static uint32_t TSAP_PORT_REMOTE;
-        static size_t POLLING_INTERVAL;
+        static uint32_t POLLING_INTERVAL;
+        static uint32_t MSCOPY_PORT;
 
         static std::map<std::string, std::function<void(const char *)>> parse_map;
     };
@@ -109,7 +111,6 @@ namespace Common{
 
     inline void Constants::setLocalTsapPort(uint32_t port){
         Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting TSAP_PORT_LOCAL=" + CharString(port));
-        //printf("Setting TSAP_PORT_LOCAL=" + CharString(port) + "\n");
         TSAP_PORT_LOCAL = port;
     }
 
@@ -119,7 +120,6 @@ namespace Common{
 
     inline void Constants::setRemoteTsapPort(uint32_t port){
         Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting TSAP_PORT_REMOTE=" + CharString(port));
-        //printf("Setting TSAP_PORT_REMOTE=" + CharString(port) + "\n");
         TSAP_PORT_REMOTE = port;
     }
 
@@ -127,20 +127,20 @@ namespace Common{
         return TSAP_PORT_REMOTE;
     }
 
-    inline void Constants::setPollingInterval(size_t pollingInterval)
+    inline void Constants::setPollingInterval(uint32_t pollingInterval)
     {
-        //printf("Setting POLLING_INTERVAL=" + CharString(pollingInterval) + "\n");
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting POLLING_INTERVAL=" + CharString(pollingInterval));
         POLLING_INTERVAL = pollingInterval;
     }
 
-    inline const size_t& Constants::getPollingInterval()
+    inline const uint32_t& Constants::getPollingInterval()
     {
         return POLLING_INTERVAL;
     }
 
     inline void Constants::setUserFilePath(std::string userFilePath) 
     { 
-        //printf("Setting USERFILE_PATH= %s\n", userFilePath.c_str());
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting USERFILE_PATH=", userFilePath.c_str());
         USERFILE_PATH = userFilePath;
     }
     
@@ -155,7 +155,7 @@ namespace Common{
 
     inline void Constants::setMeasFilePath(std::string measFilePath) 
     {
-        //printf("Setting MEASUREMENT_PATH= %s\n", measFilePath.c_str());
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting MEASUREMENT_PATH=", measFilePath.c_str());
         MEASUREMENT_PATH = measFilePath;
 
     }
@@ -166,8 +166,12 @@ namespace Common{
 
     inline void Constants::setEventFilePath(std::string eventFilePath) 
     {
-        //printf("Setting EVENT_PATH= %s\n", eventFilePath.c_str());
+        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"Setting EVENT_PATH=", eventFilePath.c_str());
         EVENT_PATH = eventFilePath;
+    }
+
+    inline uint32_t Constants::getMsCopyPort() {
+        return MSCOPY_PORT;
     }
 
 

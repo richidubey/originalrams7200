@@ -22,46 +22,13 @@
 #include "RAMS7200HWService.hxx"
 
 #include <algorithm>
+#include <utility>
 #include "Common/Logger.hxx"
 #include "Common/Constants.hxx"
 #include "Common/Utils.hxx"
+#include "Common/S7Utils.hxx"
 #include <PVSSMacros.hxx>     // DEBUG macros
 
-
-int RAMS7200HWMapper::usePriorTransformation(PeriphAddr *confPtr) {
-  switch ((uint32_t)confPtr->getTransformationType()) {
-    case TransUndefinedType:
-      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Undefined transformation" + CharString(confPtr->getTransformationType()) +", For address: "+ confPtr->getName());
-      return 0;
-    case RAMS7200DrvBoolTransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
-      confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
-      return 1;
-    case RAMS7200DrvUint8TransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
-      confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
-      return 1;
-    case RAMS7200DrvInt32TransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
-      confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
-      return 1;
-    case RAMS7200DrvInt16TransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
-      confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
-      return 1;
-    case RAMS7200DrvFloatTransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
-      confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
-      return 1;
-    case RAMS7200DrvStringTransType:
-      Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
-      confPtr->setTransform(new Transformations::RAMS7200StringTrans);
-      return 1;
-    default:
-      Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
-      return 0;
-  }
-}
 
 //--------------------------------------------------------------------------------
 // We get new configs here. Create a new HW-Object on arrival and insert it.
@@ -78,38 +45,45 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
   // In this template, the Transformation type was set via the
   // configuration panel (it is already set in the PeriphAddr)
 
-  // TODO this really depends on your protocol and is therefore just an example
-  // in this example we use the ones from Pbus, as those can be selected
-  // with the SIM driver parametrization panel
-
-  std::vector<std::string> spltDol = Common::Utils::split((confPtr->getName()).c_str());
-
-  if(spltDol.size() > 1) {
-    std::string recvdAddress(spltDol[1]);
-    // TODO: this has to be more robust
-    if(RAMS7200LibFacade::RAMS7200AddressIsValid(recvdAddress)) {
-      if(recvdAddress[1] == 'D' && ((uint32_t)confPtr->getTransformationType() != RAMS7200DrvFloatTransType && (uint32_t)confPtr->getTransformationType() != RAMS7200DrvInt32TransType)){
-        Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, "TransformWarning: Wrong Transform");
-      } else if(recvdAddress[1] == 'W' && (uint32_t)confPtr->getTransformationType()!= RAMS7200DrvInt16TransType){
-        Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, "TransformWarning: Wrong Transform");
-      }
-    }
-  }
-  // TODO: document this
-  if( ((spltDol.size() > 1) && (RAMS7200LibFacade::RAMS7200AddressIsValid(spltDol[1]) || spltDol[1][0] == '_' ) ) || (spltDol[0][0] == '_')) {
-    if(!usePriorTransformation(confPtr)) {
+  switch (confPtr->getTransformationType()) {
+    case TransUndefinedType:
+      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Undefined transformation" + CharString(confPtr->getTransformationType()) +", For address: "+ confPtr->getName());
       return HWMapper::addDpPa(dpId, confPtr);
-    }
-  } else {
-    Common::Logger::globalError("RAMS7200HWMapper::addDpPa",CharString("Illegal (Unexpected) address : ") +  CharString(confPtr->getName()));
-    return HWMapper::addDpPa(dpId, confPtr);
+    case RAMS7200DrvBoolTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Bool transformation");
+      confPtr->setTransform(new Transformations::RAMS7200BoolTrans);
+      break;
+    case RAMS7200DrvUint8TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Uint8 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Uint8Trans);
+      break;
+    case RAMS7200DrvInt32TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Int32 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Int32Trans);
+      break;
+    case RAMS7200DrvInt16TransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Int16 transformation");
+      confPtr->setTransform(new Transformations::RAMS7200Int16Trans);
+      break;
+    case RAMS7200DrvFloatTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"Float transformation");
+      confPtr->setTransform(new Transformations::RAMS7200FloatTrans);
+      break;
+    case RAMS7200DrvStringTransType:
+      Common::Logger::globalInfo(Common::Logger::L3,"String transformation");
+      confPtr->setTransform(new Transformations::RAMS7200StringTrans);
+      break;
+    default:
+      Common::Logger::globalError("RAMS7200HWMapper::addDpPa", CharString("Illegal transformation type ") + CharString((int) confPtr->getTransformationType()));
+      return HWMapper::addDpPa(dpId, confPtr);
   }
+
 
   // First add the config, then the HW-Object
   if ( !HWMapper::addDpPa(dpId, confPtr) )  // FAILED !! 
   {
     Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Failed in adding DP Para to HW Mapper object for address : " + CharString(confPtr->getName()));
-      return PVSS_FALSE;
+    return PVSS_FALSE;
   }
 
   std::vector<std::string> addressOptions = Common::Utils::split(confPtr->getName().c_str());
@@ -126,17 +100,16 @@ PVSSboolean RAMS7200HWMapper::addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
   // Set the len needed for data from _all_ subindices of this PVSS-Address.
   // Because we will deal with subix 0 only this is the Transformation::itemSize
   hwObj->setDlen(confPtr->getTransform()->itemSize());
-  //TODO - number of elements?
   // Add it to the list
   addHWObject(hwObj);
 
-  if(confPtr->getDirection() == DIRECTION_IN || confPtr->getDirection() == DIRECTION_INOUT)
-  {
-    if (addressOptions.size() == 3) // IP + VAR + POLLTIME
-    {
-      if(addressOptions[0].compare("VERSION"))
-        addAddress(addressOptions[0], addressOptions[1], addressOptions[2]);
+  if( (confPtr->getDirection() == DIRECTION_IN || confPtr->getDirection() == DIRECTION_INOUT) && (addressOptions.size() == 3) ) {
+    if(!Common::S7Utils::AddressIsValid(addressOptions[1])){
+      Common::Logger::globalError(__PRETTY_FUNCTION__, "Address is not valid!", CharString(confPtr->getName()));
+      return PVSS_FALSE;
     }
+    // TODO: add warning if requested transformation is not the same as the s7 type
+    addAddress(addressOptions[0], addressOptions[1], addressOptions[2]);
   }
 
   return PVSS_TRUE;
@@ -150,7 +123,7 @@ PVSSboolean RAMS7200HWMapper::clrDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
 
   std::vector<std::string> addressOptions = Common::Utils::split(confPtr->getName().c_str());
 
-  // Find our HWObject via a template`
+  // Find our HWObject via a template`  
   HWObject adrObj;
   adrObj.setAddress(confPtr->getName());
 
@@ -183,56 +156,39 @@ PVSSboolean RAMS7200HWMapper::clrDpPa(DpIdentifier &dpId, PeriphAddr *confPtr)
 
 void RAMS7200HWMapper::addAddress(const std::string &ip, const std::string &var, const std::string &pollTime)
 {
-    if(RAMS7200IPs.find(ip) == RAMS7200IPs.end())
-    {
-        RAMS7200IPs.insert(ip);
-        isIPrunning.insert(std::pair<std::string, bool>(ip, true));
-        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Received var from a new IP Address : " + CharString(ip.c_str()));
-        RAMS7200Addresses.erase(ip);
-        RAMS7200Addresses.insert(std::pair<std::string, std::vector<std::pair<std::string, int>>>(ip, std::vector<std::pair<std::string, int>>()));
+  auto msIt = RAMS7200MSs.find(ip);
+  if(msIt == RAMS7200MSs.end())
+  {
+    msIt = RAMS7200MSs.emplace(std::piecewise_construct,
+          std::forward_as_tuple(ip),
+          std::forward_as_tuple(RAMS7200MS{ip})).first;
+    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "New RAMS7200MS device incoming, IP Combo PLC;TP : " + CharString(msIt->second._ip_combo.c_str()));
+    if(_newMSCB){
+      _newMSCB(msIt->second);
     }
-
-    if(RAMS7200Addresses.count(ip)){
-      if(std::find(RAMS7200Addresses[ip].begin(), RAMS7200Addresses[ip].end(), make_pair(var,  std::stoi(pollTime))) == RAMS7200Addresses[ip].end())
-      {
-        RAMS7200Addresses[ip].push_back(make_pair(var, std::stoi(pollTime)));
-        Common::Logger::globalInfo(Common::Logger::L2, "Added to RAMS7200AddressList", var.c_str());
-      }
-    }
+  }
+  if(!msIt->second._run.load() && _newMSCB){
+      _newMSCB(msIt->second);
+  }
+  if(Common::S7Utils::AddressIsValid(var))
+    msIt->second.addVar(var, std::stoi(pollTime));   
 }
+
 
 void RAMS7200HWMapper::removeAddress(const std::string &ip, const std::string &var, const std::string &pollTime)
 {
-  if(RAMS7200Addresses.count(ip)) {
-    
-    if(std::find(RAMS7200Addresses[ip].begin(), RAMS7200Addresses[ip].end(), make_pair(var,  std::stoi(pollTime))) != RAMS7200Addresses[ip].end()) {
-        RAMS7200Addresses[ip].erase(std::find(RAMS7200Addresses[ip].begin(), RAMS7200Addresses[ip].end(), make_pair(var,  std::stoi(pollTime))));
-        //TODO: clarify logging, consider checking log level before iterating over all addresses
-        Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__,  CharString("Erased address: ") + var.c_str() + CharString("With polling time: ") + pollTime.c_str() + CharString(" On IP: ")+ CharString(ip.c_str()));
-        Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__,  CharString("Remaining number of addresses: ") + (std::to_string(RAMS7200Addresses[ip].size())).c_str() + CharString(" For IP: ")+ CharString(ip.c_str()));
-        
-        if(RAMS7200Addresses[ip].size() < 10) {
-          Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__,  CharString("Which are: "));
-          for(auto address : RAMS7200Addresses[ip])
-            Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__,  address.first.c_str());
-        }
+  auto msIt = RAMS7200MSs.find(ip);
+  if(msIt != RAMS7200MSs.end()) {
+    {
+        std::lock_guard<std::mutex> lk(msIt->second._threadMutex);
+        msIt->second._run.store(false);
     }
-
-    if(RAMS7200Addresses[ip].size() == 0) {
-      RAMS7200IPs.erase(ip);
-      RAMS7200Addresses.erase(ip);
-      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,  "All Addresses deleted from the IP : " + CharString(ip.c_str()));
-
-      while(isIPrunning[ip])
-      {
-          Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, " Sleeping for 1 second since the Polling is still running for the IP : " + CharString(ip.c_str()));
-          std::this_thread::sleep_for(std::chrono::seconds(1));
-      }
-      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,"Ready to register new device as Lambda Thread exited from the polling loop for the IP : " + CharString(ip.c_str()));
+    msIt->second._threadCv.notify_all();
+    msIt->second.removeVar(var);
+    if(msIt->second.isEmpty()) {
+      Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,  "All Addresses deleted for IP  Combo PLC;TP : " + CharString(ip.c_str()));
+      RAMS7200MSs.erase(msIt);
     }
   }
-}
-
-bool RAMS7200HWMapper::checkIPExist(std::string ip) {
-  return RAMS7200IPs.count(ip);
+  
 }

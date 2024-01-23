@@ -24,7 +24,8 @@ namespace Common {
     uint32_t Constants::DRV_NO = 0;                         // Read from PVSS on driver startup
     uint32_t Constants::TSAP_PORT_LOCAL = 0;                // Read from PVSS on driver startup from config file
     uint32_t Constants::TSAP_PORT_REMOTE = 0;               // Read from PVSS on driver startupconfig file
-    size_t Constants::POLLING_INTERVAL = 1;                 // Read from PVSS on driver startupconfig file
+    uint32_t Constants::POLLING_INTERVAL = 2;               // Read from PVSS on driver startupconfig file, default 2 seconds
+    uint32_t Constants::MSCOPY_PORT = 20248;                // TODO: read from PVSS (or get from Addressing) 
     std::string Constants::drv_version = PROJECT_VER;
     std::string MEASUREMENT_PATH = "/opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/";
     std::string EVENT_PATH = "/opt/ramdev/PVSS_projects/REMUS_TEST/data/mes/in/";
@@ -36,32 +37,10 @@ namespace Common {
         {   "_DEBUGLVL",
             [](const char* data)
             {
-                int16_t retVal;
-                memcpy(&retVal, data, sizeof(int16_t));
-                std::reverse(reinterpret_cast<char*>(&retVal), reinterpret_cast<char*>(&retVal) + sizeof(int16_t));
-
+                int16_t retVal = Common::Utils::CopyNSwapBytes<int16_t>(data);
                 Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "setLogLvl :",std::to_string(retVal).c_str());
                 Common::Logger::setLogLvl(retVal);
             }
         }
-        
-        /*
-        ,
-        {   "DEBOUNCINGTHREADINTERVAL",
-            [](const char* data)
-            {
-							Common::Logger::globalInfo(Common::Logger::L1, "setDebouncingThreadInterval:", CharString(data));
-              Common::Constants::setDebouncingThreadInterval((int)std::atoi(data));
-            }
-        },
-        {   "MAXPOLLRECORDS",
-            [](const char* data)
-            {
-							Common::Logger::globalInfo(Common::Logger::L1, "setConsumerMaxPollRecords:", CharString(data));
-              Common::Constants::setConsumerMaxPollRecords((size_t)std::atoi(data));
-            }
-        }
-        */
-
     };
 }

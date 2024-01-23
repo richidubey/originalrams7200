@@ -19,6 +19,7 @@
 #include "RAMS7200HWMapper.hxx"
 
 #include "Common/Logger.hxx"
+#include "Common/Utils.hxx"
 
 #include <cmath>
 
@@ -49,19 +50,6 @@ VariableType RAMS7200Int16Trans::getVariableType() const {
 	return INTEGER_VAR;
 }
 
-int16_t ReverseInt16( const int16_t inInt16 )
-{
-   int16_t retVal;
-   char *IntToConvert = ( char* ) & inInt16;
-   char *returnInt = ( char* ) & retVal;
-
-   // swap the bytes into a temporary buffer
-   returnInt[0] = IntToConvert[1];
-   returnInt[1] = IntToConvert[0];
-
-   return retVal;
-}
-
 
 PVSSboolean RAMS7200Int16Trans::toPeriph(PVSSchar *buffer, PVSSuint len,	const Variable &var, const PVSSuint subix) const {
 
@@ -79,7 +67,7 @@ PVSSboolean RAMS7200Int16Trans::toPeriph(PVSSchar *buffer, PVSSuint len,	const V
 	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200Int16Trans::toPeriph : Ineteger var received in transformation toPeriph, val is: ", std::to_string(((reinterpret_cast<const IntegerVar &>(var)).getValue())).c_str());
 	// this one is a bit special as the number is handled by wincc oa as int32, but we handle it as 16 bit  integer
 	// thus any info above the 16 first bits is lost
-	reinterpret_cast<int16_t *>(buffer)[subix] = ReverseInt16(reinterpret_cast<const IntegerVar &>(var).getValue());
+	reinterpret_cast<int16_t *>(buffer)[subix] = Common::Utils::CopyNSwapBytes<int16_t>(reinterpret_cast<const IntegerVar &>(var).getValue());
 	
 	return PVSS_TRUE;
 }
@@ -96,7 +84,7 @@ VariablePtr RAMS7200Int16Trans::toVar(const PVSSchar *buffer, const PVSSuint dle
 		return NULL;
 	}
 	// this one is a bit special as the number is handled by wincc oa as int32, but we handle it as 16 bit  integer
-	return new IntegerVar(__bswap_16((int16_t)*reinterpret_cast<const int16_t*>(buffer + (subix * size))));
+	return new IntegerVar(Common::Utils::CopyNSwapBytes<int16_t>(*reinterpret_cast<const int16_t*>(buffer + (subix * size))));
 }
 
 }//namespace

@@ -55,7 +55,6 @@ Transformation *RAMS7200StringTrans::clone() const
 
 int RAMS7200StringTrans::itemSize() const
 {
-  // TODO - check maximum possible size
   return _size;
 }
 
@@ -87,46 +86,26 @@ PVSSboolean RAMS7200StringTrans::toPeriph(PVSSchar *buffer, PVSSuint len,
     return PVSS_FALSE;
   }
 
-  // Check data len. TextVar::getString returns a CharString
-  const TextVar& tv = static_cast<const TextVar &>(var);
-  if (len < tv.getString().len() + 1)
-  {
-    // Throw error message
-    ErrHdl::error(
-      ErrClass::PRIO_SEVERE,             // Data will be lost
-      ErrClass::ERR_IMPL,                // Mus be implementation
-      ErrClass::UNEXPECTEDSTATE,         // Nothing else appropriate
-      "RAMS7200StringTrans::toPeriph",       // File and function name
-      "Data buffer too small; need:" +
-      CharString(tv.getString().len() + 1) +
-      " have:" + CharString(len)
-    );
-
-    return PVSS_FALSE;
-  }
-
-  if(tv.getString().len() > 1024 * 10 ){
+    const TextVar tv = reinterpret_cast<const TextVar &>(var);
+    if(tv.getString().len() >= _size){
       ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
-              ErrClass::ERR_PARAM, // Wrong parametrization
-              ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
-              "RAMS7200StringTrans::toPeriph",       // File and function name
-              "String too long" // Unfortunately we don't know which DP
-              );
+          ErrClass::ERR_PARAM, // Wrong parametrization
+          ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
+          "RAMS7200StringTrans", "toPeriph", // File and function name
+          "String too long" // Unfortunately we don't know which DP
+          );
 
       return PVSS_FALSE;
-  }
-
-  sprintf((char*)buffer, "%s%c", tv.getValue(), '\0');
-
+    }
+  memset(buffer, 0, len);
+  snprintf( (char *) buffer, len, "%s", tv.getValue());
   return PVSS_TRUE;
 }
 
 VariablePtr RAMS7200StringTrans::toVar(const PVSSchar *buffer, const PVSSuint dlen,
                                    const PVSSuint /* subix */) const
 {
-  std::string strVal(reinterpret_cast<char const*>(buffer));
-  PVSSuint strSize = std::min({static_cast<PVSSuint>(strVal.length()), static_cast<PVSSuint>(dlen-1)});
-  return new TextVar(strVal.c_str(), strSize);
+  return new TextVar((const char*)buffer, (PVSSuint)strnlen((const char*)buffer, dlen));
 }
 
 

@@ -13,7 +13,7 @@ end note
 ;
 note left
     <b> RAMS7200HWService::
-    <b>handleNewIPAddress()
+    <b>handleNewMS()
 end note
 fork
     :ThreadPerIP for IP Address 1;
@@ -63,7 +63,7 @@ fork again
     skinparam ConditionEndStyle hline
     partition ThreadPerIP {
         start
-        while(<b>_consumerRun</b>?) is (yes)
+        while(<b>_driverRun</b>?) is (yes)
             (F)
             note right
                 <b>RAMS7200LibFacade.write()</b>
@@ -76,7 +76,7 @@ fork again
             end note
             while (polled messages to process?) is (yes)
                 :<b>RAMS7200HWService::
-                <b>handleConsumeNewMessage()</b>;
+                <b>queueToDP()</b>;
                 :add DPE to <b>_toDPqueue</b>;
                 note right
                     <b>RAMS7200HWService::insertInDataToDP()</b>

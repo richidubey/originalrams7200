@@ -17,9 +17,10 @@
 #define RAMS7200HWMAPPER_H_
 
 #include <HWMapper.hxx>
-#include <unordered_set>
+#include <unordered_map>
 
-// TODO: Write here all the Transformation types, one for every transformation
+#include "RAMS7200MS.hxx"
+
 #define RAMS7200DrvBoolTransType (TransUserType)
 #define RAMS7200DrvUint8TransType (TransUserType + 1)
 #define RAMS7200DrvInt16TransType (TransUserType + 2)
@@ -27,25 +28,22 @@
 #define RAMS7200DrvFloatTransType (TransUserType + 4)
 #define RAMS7200DrvStringTransType (TransUserType + 5)
 
+using newMSCB = std::function<void(RAMS7200MS&)>;
+
 class RAMS7200HWMapper : public HWMapper
 {
   public:
-    std::map<std::string, bool> isIPrunning;
     virtual PVSSboolean addDpPa(DpIdentifier &dpId, PeriphAddr *confPtr);
     virtual PVSSboolean clrDpPa(DpIdentifier &dpId, PeriphAddr *confPtr);
 
-    const std::unordered_set<std::string>& getRAMS7200IPs() {return RAMS7200IPs;}
-    const std::map<std::string, std::vector<std::pair<std::string, int>>>& getRAMS7200Addresses(){return RAMS7200Addresses;}
-    bool checkIPExist(std::string);
+    std::unordered_map<std::string, RAMS7200MS>& getRAMS7200MSs(){return RAMS7200MSs;}
+    void setNewMSCallback(newMSCB cb){_newMSCB = cb;}
 
   private:
-    int usePriorTransformation(PeriphAddr *confPtr);
     void addAddress(const std::string &ip, const std::string &var, const std::string &pollTime);
     void removeAddress(const std::string& ip, const std::string& var, const std::string &pollTime);
-    std::unordered_set<std::string> RAMS7200IPs;
-    
-    std::map<std::string, std::vector<std::pair<std::string, int>>> RAMS7200Addresses;
-    std::map<std::string,  int> addressCounter; //For counting the number of times an address has been added
+    std::unordered_map<std::string, RAMS7200MS> RAMS7200MSs;
+    newMSCB _newMSCB{nullptr};
 
     enum Direction
     {

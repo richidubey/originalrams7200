@@ -17,15 +17,19 @@
 #define RAMS7200HWSERVICE_H_
 
 #include <HWService.hxx>
-#include <memory>
+#include "RAMS7200MS.hxx"
 #include "RAMS7200LibFacade.hxx"
-
+#include "RAMS7200Panel.hxx"
 #include "Common/Logger.hxx"
+
+#include <memory>
 #include <queue>
 #include <chrono>
 #include <thread>
 #include <unordered_map>
-#include<set>
+#include <tuple>
+
+using toDPTriple = std::tuple<CharString, uint16_t, char*>;
 
 class RAMS7200HWService : public HWService
 {
@@ -39,35 +43,27 @@ class RAMS7200HWService : public HWService
     int CheckIP(std::string);
 
 private:
-    std::map < std::string , std::vector< std::pair<std::string, void*> > > writeQueueForIP;
-    std::set<std::string> IPAddressList;
-    void handleConsumerConfigError(const std::string&, int, const std::string&);
+    void queueToDP(const std::string&, uint16_t, char*);
+    void handleNewMS(RAMS7200MS&);
 
-    void handleConsumeNewMessage(const std::string&, const std::string&, const std::string&, char*);
-    void handleNewIPAddress(const std::string& ip);
-
-    errorCallbackConsumer _configErrorConsumerCB{[this](const std::string& ip, int err, const std::string& reason) { this->handleConsumerConfigError(ip, err, reason);}};
-    consumeCallbackConsumer  _configConsumeCB{[this](const std::string& ip, const std::string& var, const std::string& pollTime, char* payload){this->handleConsumeNewMessage(ip, var, pollTime,payload);}};
-    std::function<void(const std::string&)> _newIPAddressCB{[this](const std::string& ip){this->handleNewIPAddress(ip);}};
+    queueToDPCallback  _queueToDPCB{[this](const std::string& dp_address, uint16_t length, char* payload){this->queueToDP(dp_address, length, payload);}};
+    std::function<void(RAMS7200MS&)> _newMSCB{[this](RAMS7200MS& ms){this->handleNewMS(ms);}};
 
     //Common
-    void insertInDataToDp(CharString&& address, char* value);
+    void insertInDataToDp(CharString&& address, uint16_t length, char* value);
     std::mutex _toDPmutex;
-    
-    std::map < std::string, int > DisconnectsPerIP;
-    std::queue<std::pair<CharString,char*>> _toDPqueue;
+    std::queue<toDPTriple> _toDPqueue;
 
     enum
     {
-       ADDRESS_OPTIONS_IP = 0,
+       ADDRESS_OPTIONS_IP_COMBO = 0,
        ADDRESS_OPTIONS_VAR,
        ADDRESS_OPTIONS_POLLTIME,
        ADDRESS_OPTIONS_SIZE
     } ADDRESS_OPTIONS;
 
-    std::vector<std::thread> _pollingThreads;
-
-    std::map<std::string, RAMS7200LibFacade*> _facades;
+    std::vector<std::thread> _plcThreads;
+    std::vector<std::thread> _panelThreads;
 };
 
 

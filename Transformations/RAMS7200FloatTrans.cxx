@@ -21,6 +21,7 @@
 #include "RAMS7200HWMapper.hxx"
 
 #include "Common/Logger.hxx"
+#include "Common/Utils.hxx"
 
 #include <cmath>
 
@@ -51,22 +52,6 @@ VariableType RAMS7200FloatTrans::getVariableType() const {
 	return FLOAT_VAR;
 }
 
-float ReverseFloat( const float inFloat )
-{
-   float retVal;
-   char *floatToConvert = ( char* ) & inFloat;
-   char *returnFloat = ( char* ) & retVal;
-
-   // swap the bytes into a temporary buffer
-   returnFloat[0] = floatToConvert[3];
-   returnFloat[1] = floatToConvert[2];
-   returnFloat[2] = floatToConvert[1];
-   returnFloat[3] = floatToConvert[0];
-
-   return retVal;
-}
-
-
 PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len, const Variable &var, const PVSSuint subix) const {
 
 	if(var.isA() != FLOAT_VAR){
@@ -79,52 +64,13 @@ PVSSboolean RAMS7200FloatTrans::toPeriph(PVSSchar *buffer, PVSSuint len, const V
 
 		return PVSS_FALSE;
 	}
-
-	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200FloatTrans::toPeriph : Float var received in transformation toPeriph, val is: ", std::to_string(((float)(reinterpret_cast<const FloatVar &>(var)).getValue())).c_str());
-	Common::Logger::globalInfo(Common::Logger::L2,"Len of float val is: ", (std::to_string(len)).c_str());
-	reinterpret_cast<float *>(buffer)[subix] = ReverseFloat((float)(reinterpret_cast<const FloatVar &>(var)).getValue());
-	//reinterpret_cast<float *>(buffer)[subix] = ((float)(reinterpret_cast<const FloatVar &>(var)).getValue());
-
+	reinterpret_cast<float *>(buffer)[subix] = Common::Utils::CopyNSwapBytes<float>((reinterpret_cast<const FloatVar &>(var)).getValue());
 	return PVSS_TRUE;
 }
 
 VariablePtr RAMS7200FloatTrans::toVar(const PVSSchar *buffer, const PVSSuint dlen, const PVSSuint subix) const {
 
-	if(buffer == NULL ){
-		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
-				ErrClass::ERR_PARAM, // Wrong parametrization
-				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
-				"RAMS7200FloatTrans", "toVar", // File and function name
-				"Null buffer pointer" + CharString(dlen) // Unfortunately we don't know which DP
-				);
-		return NULL;
-	}
-
-	else if(dlen == sizeof(int16_t)) {
-		Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Float var returned with Dlen 2, treating it as int16");
-		return new IntegerVar(__bswap_16((int16_t)*reinterpret_cast<const int16_t*>(buffer + (subix * size))));
-	}
-	else if(dlen%size > 0){
-		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
-				ErrClass::ERR_PARAM, // Wrong parametrization
-				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
-				"RAMS7200FloatTrans", "toVar", // File and function name
-				"Dlen mod size is gt. 0: " + CharString(dlen) // Unfortunately we don't know which DP
-				);
-		return NULL;
-	}
-
-	else if(dlen < size*(subix+1)){
-		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
-				ErrClass::ERR_PARAM, // Wrong parametrization
-				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
-				"RAMS7200FloatTrans", "toVar", // File and function name
-				"Dlen less than size mult. subix + 1: " + CharString(dlen) // Unfortunately we don't know which DP
-				);
-		return NULL;
-	}
-
-	else if(buffer == NULL || dlen%size > 0 || dlen < size*(subix+1)){
+	if(buffer == NULL || dlen%size > 0 || dlen < size*(subix+1)){
 		ErrHdl::error(ErrClass::PRIO_SEVERE, // Data will be lost
 				ErrClass::ERR_PARAM, // Wrong parametrization
 				ErrClass::UNEXPECTEDSTATE, // Nothing else appropriate
@@ -134,7 +80,7 @@ VariablePtr RAMS7200FloatTrans::toVar(const PVSSchar *buffer, const PVSSuint dle
 		return NULL;
 	}
 
-	return new FloatVar(ReverseFloat(reinterpret_cast<const float*>(buffer)[subix]));
+	return new FloatVar(Common::Utils::CopyNSwapBytes(reinterpret_cast<const float*>(buffer)[subix]));
 }
 
 }//namespace

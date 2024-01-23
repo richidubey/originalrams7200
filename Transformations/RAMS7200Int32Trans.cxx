@@ -19,6 +19,7 @@
 #include "RAMS7200HWMapper.hxx"
 
 #include "Common/Logger.hxx"
+#include "Common/Utils.hxx"
 
 #include <cmath>
 
@@ -49,21 +50,6 @@ VariableType RAMS7200Int32Trans::getVariableType() const {
 	return INTEGER_VAR;
 }
 
-int32_t ReverseInt32( const int32_t inInt32 )
-{
-   int32_t retVal;
-   char *IntToConvert = ( char* ) & inInt32;
-   char *returnInt = ( char* ) & retVal;
-
-   // swap the bytes into a temporary buffer
-   returnInt[0] = IntToConvert[3];
-   returnInt[1] = IntToConvert[2];
-   returnInt[2] = IntToConvert[1];
-   returnInt[3] = IntToConvert[0];
-
-   return retVal;
-}
-
 PVSSboolean RAMS7200Int32Trans::toPeriph(PVSSchar *buffer, PVSSuint len, const Variable &var, const PVSSuint subix) const {
 
 	if(var.isA() != INTEGER_VAR /* || subix >= Transformation::getNumberOfElements() */){
@@ -77,7 +63,7 @@ PVSSboolean RAMS7200Int32Trans::toPeriph(PVSSchar *buffer, PVSSuint len, const V
 		return PVSS_FALSE;
 	}
 	Common::Logger::globalInfo(Common::Logger::L2,"RAMS7200Int32Trans::toPeriph : Integer32 var received in transformation toPeriph, val is: ", std::to_string(((reinterpret_cast<const IntegerVar &>(var)).getValue())).c_str());
-	reinterpret_cast<int32_t *>(buffer)[subix] = ReverseInt32(reinterpret_cast<const IntegerVar &>(var).getValue());
+	reinterpret_cast<int32_t *>(buffer)[subix] = Common::Utils::CopyNSwapBytes<int32_t>(reinterpret_cast<const IntegerVar &>(var).getValue());
 	return PVSS_TRUE;
 }
 
@@ -92,7 +78,7 @@ VariablePtr RAMS7200Int32Trans::toVar(const PVSSchar *buffer, const PVSSuint dle
 				);
 		return NULL;
 	}
-	return new IntegerVar(ReverseInt32(reinterpret_cast<const int32_t*>(buffer)[subix]));
+	return new IntegerVar( Common::Utils::CopyNSwapBytes<int32_t>(reinterpret_cast<const int32_t*>(buffer)[subix]));
 }
 
 }//namespace

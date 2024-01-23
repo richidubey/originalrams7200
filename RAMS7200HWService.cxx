@@ -32,7 +32,7 @@
 #include <utility>
 #include <thread>
 
-static std::atomic<bool> _consumerRun{true};
+static std::atomic<bool> _driverRun{true};
 
 //--------------------------------------------------------------------------------
 // called after connect to data
@@ -48,155 +48,71 @@ PVSSboolean RAMS7200HWService::initialize(int argc, char *argv[])
   // if you don't need it, you can safely remove the whole method
   Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"RAMS7200 Driver initialization of Internal vars start");
 
+  // add callback for new MS
+  static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->setNewMSCallback(_newMSCB);
+
   Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"RAMS7200 Driver initialization of Internal vars end");
   // To stop driver return PVSS_FALSE
   return PVSS_TRUE;
 }
 
-void RAMS7200HWService::handleConsumerConfigError(const std::string& ip, int code, const std::string& str)
+
+void RAMS7200HWService::queueToDP(const std::string& dp_address, uint16_t length, char* payload)
 {
-     Common::Logger::globalWarning(__PRETTY_FUNCTION__, CharString(ip.c_str(), ip.length()), str.c_str());
+  insertInDataToDp(dp_address.c_str(), length, payload);
 }
 
-void RAMS7200HWService::handleConsumeNewMessage(const std::string& ip_address, const std::string& var, const std::string& pollTime, char* payload)
+void RAMS7200HWService::handleNewMS(RAMS7200MS& ms)
 {
-  if(ip_address.compare("_VERSION") == 0)  {
-    insertInDataToDp(CharString((ip_address).c_str()), payload);  //Config DPs do not have a polling time or an IP address associated with them in the address.
-  }
-  else if( (var.compare("_touchConError") == 0) || (var.compare("_Error") == 0) )
-    insertInDataToDp(CharString((ip_address + "$" + var ).c_str()), payload);  //Config DPs do not have a polling time associated with them in the address.
-  else 
-    //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, (ip_address + ":" + var + ":" + payload).c_str()); 
+  std::lock_guard<std::mutex> lock{_toDPmutex};
+  ms._run = true;
+
+  // PLC thread
+  _plcThreads.emplace_back(std::thread([&]() {
+    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Thread up for PLC IP" + CharString(ms._ip.c_str()));
+    
+    RAMS7200LibFacade aFacade(ms, this->_queueToDPCB);
+    aFacade.Connect();
+    bool wasActive = !RAMS7200Resources::getDisableCommands();
+    while(_driverRun && ms._run)
     {
-      //Common::Logger::globalInfo(Common::Logger::L3, __PRETTY_FUNCTION__, ("Polled: " + ip_address + ":" + var + ":" + pollTime).c_str()); 
-      insertInDataToDp(CharString((ip_address + "$" + var + "$" + pollTime).c_str()), payload);
+      const bool isNowActive = !RAMS7200Resources::getDisableCommands();
+      aFacade.EnsureConnection(wasActive != isNowActive);
+      if(isNowActive) {
+        // The Server is Active (for redundant systems)
+        Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Polling:", ms._ip.c_str());
+        const auto cycleInterval = std::chrono::seconds(1); //TODO : this should be a driver parameter? Constant + Driver start read-up
+        const auto start = std::chrono::steady_clock::now();
+        //First do all the writes for this IP, then the reads
+        aFacade.WriteToPLC();
+        aFacade.Poll();                         
+        const auto end = std::chrono::steady_clock::now();
+        const auto time_elapsed = end - start;
+        
+        // If we still have time left, then sleep
+        if(time_elapsed < cycleInterval)
+          aFacade.sleep_for(cycleInterval- time_elapsed);
+      } else {
+        // The Server is Passive (for redundant systems)
+        aFacade.sleep_for( std::chrono::seconds(1));
+      }
+      wasActive = isNowActive;
     }
-}
+  }));
 
-void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
-{
-    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Starting with new PLC+PANEL IP:" + CharString(ip.c_str()));
-    static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning.insert(std::pair<std::string, bool>(ip, true));
-    static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[ip] = true;
-
-    auto lambda = [&]
-        {
-          std::string IP_FIXED = ip.c_str();
-          std::string PLC_IP = Common::Utils::split(IP_FIXED, ';')[0];
-          std::string TP_IP = Common::Utils::split(IP_FIXED, ';')[1];
-          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Inside polling thread for PLC+PANEL IP:" + CharString(ip.c_str()));
-          RAMS7200LibFacade aFacade(PLC_IP, TP_IP, this->_configConsumeCB, this->_configErrorConsumerCB);
-          _facades[ip] = &aFacade;
-          
-          writeQueueForIP.insert(std::pair < std::string, std::vector < std::pair < std::string, void * > > > ( ip, std::vector<std::pair<std::string, void *> > ()));
-          
-          aFacade.Connect();
-          aFacade.startFileSharingThread();
-
-          if(!aFacade.isInitialized())
-          {
-              Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,"Trying to connect again in 5 seconds since unable to initialize PLC IP:" + CharString(PLC_IP.c_str()));
-              std::this_thread::sleep_for(std::chrono::seconds(5));
-
-              aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, true);
-              
-              do {
-                //Try to connect again.
-                aFacade.Reconnect();
-
-                if(!aFacade.isInitialized()) {
-                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Trying again in 5 seconds since there was a failure in re-connection for PLC IP:" + CharString(PLC_IP.c_str()));
-                  aFacade.Disconnect();
-                  std::this_thread::sleep_for(std::chrono::seconds(5));
-                }
-              } while(!aFacade.isInitialized()  && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) &&_consumerRun);
-          }
-
-          if(aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) && _consumerRun) {
-            std::this_thread::sleep_for(std::chrono::seconds(3)); //Give some time for the driver to load the addresses.
-
-            aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
-
-            auto first_time = std::chrono::steady_clock::now();
-            
-            while(_consumerRun && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED))
-            {
-              if(!RAMS7200Resources::getDisableCommands()) {
-                // The Server is Active (for redundant systems)
-                
-                Common::Logger::globalInfo(Common::Logger::L2,__PRETTY_FUNCTION__, "Polling");
-                auto cycleInterval = std::chrono::seconds(1);
-                auto start = std::chrono::steady_clock::now();
-
-                auto vars = static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200Addresses();
-                if(vars.find(IP_FIXED) != vars.end()){
-                    //First do all the writes for this IP, then the reads
-                    aFacade.write(writeQueueForIP[IP_FIXED]);
-                    aFacade.markForNextRead(writeQueueForIP[IP_FIXED], first_time);
-                    writeQueueForIP[IP_FIXED].clear();
-                    aFacade.Poll(vars[IP_FIXED], start);                         
-                }
-                auto end = std::chrono::steady_clock::now();
-                auto time_elapsed = end - start;
-                
-                // If we still have time left, then sleep
-                if(time_elapsed < cycleInterval)
-                  std::this_thread::sleep_for(cycleInterval- time_elapsed);
-
-                if(aFacade.readFailures > 5) {
-                  Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "More than 5 read failures, Disconnecting from PLC IP:" + CharString(PLC_IP.c_str()));
-
-                  aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, true);
-
-                  do {
-                    //Disconnect and try to connect again.
-                    aFacade.Disconnect();
-                    aFacade.Reconnect();
-
-                    if(!aFacade.isInitialized()) {
-                      Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Failure in re-connection. Trying again in 5 seconds for PLC IP:" + CharString(PLC_IP.c_str()));
-                      std::this_thread::sleep_for(std::chrono::seconds(5));
-                    }
-                  } while(!aFacade.isInitialized() && static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) && _consumerRun);
-                  aFacade.readFailures = 0;
-                  aFacade.RAMS7200MarkDeviceConnectionError(IP_FIXED, false);
-                }
-              } else {
-                // The Server is Passive (for redundant systems)
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-              }
-            }
-          }
-
-          if( static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->checkIPExist(IP_FIXED) == false )
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. IP removed from list. IP: "+ CharString(IP_FIXED.c_str()));
-          else if(!_consumerRun)
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. All threads were asked to stop. This looping thread was for IP: "+ CharString(IP_FIXED.c_str())); 
-          else
-            Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Out of polling loop for the thread. A different reason. This looping thread was for IP: "+ CharString(IP_FIXED.c_str())); 
-
-          aFacade.Disconnect();
-          IPAddressList.erase(IP_FIXED);
-          static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->isIPrunning[IP_FIXED] = false;
-          aFacade.clearLastWriteTimeList();
-
-          {
-            std::unique_lock<std::mutex> lck(aFacade.mutex_);
-
-            if(aFacade.FSThreadRunning == true) {
-              Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Cannot exit now. Need to wait for file sharing thread to terminate corresponding to PLC IP: "+ CharString(IP_FIXED.c_str()));
-              
-              aFacade.stopCurrentFSThread = true;
-              
-              aFacade.CV_SwitchFSThread.wait(lck, [&]() {aFacade.stopCurrentFSThread = true; return !aFacade.FSThreadRunning;});
-              
-              Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "File Sharing thread terminated. Exiting. PLC IP was: "+ CharString(IP_FIXED.c_str()));
-            }
-            aFacade.stopCurrentFSThread = true;
-          }
-          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Exiting Lambda Thread. PLC IP was: "+ CharString(IP_FIXED.c_str()));
-        };    
-    _pollingThreads.emplace_back(lambda);
+  // Panel thread. Check if we've got a panel IP
+  if(!ms._tp_ip.empty()) 
+  {
+    _panelThreads.emplace_back(std::thread([&]() {
+      Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Thread up for PANEL IP:" + CharString(ms._tp_ip.c_str()));
+      RAMS7200Panel aPanel(ms, this->_queueToDPCB);
+      aPanel.FileSharingTask(Common::Constants::getMsCopyPort());
+    }));
+  }
+  else
+  {
+    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "No Panel for this PLC");
+  }
 }
 
 //--------------------------------------------------------------------------------
@@ -205,37 +121,42 @@ void RAMS7200HWService::handleNewIPAddress(const std::string& ip)
 PVSSboolean RAMS7200HWService::start()
 {
   // use this function to start your hardware activity.  
-   // Check if we need to launch consumer(s)
-   // This list is automatically built by exisiting addresses sent at driver startup
-   // new top
-   for (const auto& ip : static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200IPs() )
-   {
-        IPAddressList.insert(ip);
-        this->handleNewIPAddress(ip);
-   }
+  // The ms list is automatically built by exisiting addresses sent at driver startup
+  for (auto& msIt : static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200MSs() )
+  {
+      this->handleNewMS(msIt.second);
+  }
 
   //Write Driver version
-  char* DrvVersion = new char[Common::Constants::getDrvVersion().size()];
+  char* DrvVersion = new char[Common::Constants::getDrvVersion().size()+1];
   std::strcpy(DrvVersion, Common::Constants::getDrvVersion().c_str());
   Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "RAMS7200 Sent Driver version: " + CharString(DrvVersion));
-  handleConsumeNewMessage("_VERSION", "", "", DrvVersion);
+  queueToDP("_VERSION", Common::Constants::getDrvVersion().size() + 1, DrvVersion);
 
   return PVSS_TRUE;
 }
 
-int RAMS7200HWService::CheckIP(std::string IPAddress)
-{
-  return IPAddressList.count(IPAddress);
-}
 //--------------------------------------------------------------------------------
 
 void RAMS7200HWService::stop()
 {
   // use this function to stop your hardware activity.
   Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__,"RAMS7200 Driver requested to Stop");
-  _consumerRun = false;
+  _driverRun.store(false);
 
-  for(auto& pt : _pollingThreads)
+  for (auto& msIt : static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200MSs() )
+  {
+      msIt.second._run.store(false);
+      msIt.second._threadCv.notify_all();
+  }
+
+  for(auto& pt : _plcThreads)
+  {
+    if(pt.joinable())
+        pt.join();
+  }
+
+  for(auto& pt : _panelThreads)
   {
     if(pt.joinable())
         pt.join();
@@ -247,39 +168,15 @@ void RAMS7200HWService::stop()
 void RAMS7200HWService::workProc()
 {
 
-  for (const auto& ip : static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200IPs() )
-   {
-        if(IPAddressList.count(ip) == 0)
-        {
-          Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__, "Calling HandleNewIP() from workProc() for PLC+TP IP: " + CharString(ip.c_str()));
-          IPAddressList.insert(ip);
-          this->handleNewIPAddress(ip);
-        }
-   }
-
   HWObject obj;
-  //Common::Logger::globalInfo(Common::Logger::L1, "Inside WorkProc");
-  // TODO somehow receive a message from your device
   std::lock_guard<std::mutex> lock{_toDPmutex};
-  //Common::Logger::globalInfo(Common::Logger::L1, "Get lock on DPmutex");
-  //Common::Logger::globalInfo(Common::Logger::L1, __PRETTY_FUNCTION__,"Size", CharString(_toDPqueue.size()));
+
   while (!_toDPqueue.empty())
   {
-    //Common::Logger::globalInfo(Common::Logger::L3,__PRETTY_FUNCTION__, CharString("There are ") + (std::to_string((_toDPqueue.size()))).c_str() + CharString(" elements to process"));
-    auto pair = _toDPqueue.front();
+    auto item = std::move(_toDPqueue.front());
     _toDPqueue.pop();
-    //        Common::Logger::globalInfo(Common::Logger::L1,"For Request, First element is ", pair.first);
-    //    Common::Logger::globalInfo(Common::Logger::L1,"For Request, Second element is ", pair.second);
-    std::vector<std::string> addressOptions = Common::Utils::split(pair.first.c_str());
-    obj.setAddress(pair.first);
 
-    if(strcmp(pair.first.c_str(), "_VERSION") == 0) {
-        Common::Logger::globalInfo(Common::Logger::L2,"For driver version, writing to WinCCOA value ", pair.second);
-    }
-
-//    // a chance to see what's happening
-//    if ( Resources::isDbgFlag(Resources::DBG_DRV_USR1) )
-//      obj.debugPrint();
+    obj.setAddress(std::get<0>(item));
     
     // find the HWObject via the periphery address in the HWObject list,
     HWObject *addrObj = DrvManager::getHWMapperPtr()->findHWObject(&obj);
@@ -287,50 +184,25 @@ void RAMS7200HWService::workProc()
     // ok, we found it; now send to the DPEs
     if ( addrObj )
     {
-        //Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, pair.first, pair.second);
         //addrObj->debugPrint();
         obj.setOrgTime(TimeVar());  // current time
-        
-        if(strcmp(pair.first.c_str(), "_VERSION") == 0) {
-          obj.setDlen(4);
-          Common::Logger::globalInfo(Common::Logger::L2,"AddrObj found, For driver version, writing to WinCCOA value ", pair.second);
-        } else {
-          int dataLengh = RAMS7200LibFacade::getByteSizeFromAddress(Common::Utils::split(pair.first.c_str())[1]);
-
-          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA first ", pair.first.  c_str());
-          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA second ", pair.second );
-          //   Common::Logger::globalInfo(Common::Logger::L1, "-->send to WinCCOA thirds ", std::to_string(dataLengh).c_str());
-          //Common::Logger::globalInfo(Common::Logger::L1,"Data length is ", std::to_string(dataLengh).c_str());
-          obj.setDlen(dataLengh); // lengh
-        }
-
-        obj.setData((PVSSchar*)pair.second); //data
+        obj.setDlen(std::get<1>(item)); //length
+        obj.setData((PVSSchar*)(std::move(std::get<2>(item)))); //data
         obj.setObjSrcType(srcPolled);
 
-        //Common::Logger::globalInfo(Common::Logger::L3,"Before writing to WinCC, mprobe returns ", mprobe(pair.second));
-        //Common::Logger::globalInfo(Common::Logger::L3,"Before writing to WinCC, Data pointer points to address ", &(*pair.second));
-
         if( DrvManager::getSelfPtr()->toDp(&obj, addrObj) != PVSS_TRUE) {
-          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Problem in sending item's value to PVSS for address: " + pair.first);
+          Common::Logger::globalWarning(__PRETTY_FUNCTION__, "Problem in sending item's value to PVSS for address: " + std::get<0>(item));
         }
-        //Common::Logger::globalInfo(Common::Logger::L3,"After writing to WinCC, Data pointer points to address ", &(*pair.second));
-        //Common::Logger::globalInfo(Common::Logger::L3,"After writing to WinCC, mprobe returns ", mprobe(pair.second));
-
-        //Common::Logger::globalInfo(Common::Logger::L3,"Expected Value is ", (MCHECK_OK));
-
-        //Common::Logger::globalInfo(Common::Logger::L3,"Deleting Address since successfully written into address: ", pair.first);
-        //delete pair.second;
     } else {
-        Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Problem in getting HWObject for the address: " + pair.first);   
+        Common::Logger::globalWarning(__PRETTY_FUNCTION__, "Problem in getting HWObject for the address: " + std::get<0>(item));   
     }
   }
 }
 
-void RAMS7200HWService::insertInDataToDp(CharString&& address, char* item)
+void RAMS7200HWService::insertInDataToDp(CharString&& address, uint16_t length, char* item)
 {
-
     std::lock_guard<std::mutex> lock{_toDPmutex};
-    _toDPqueue.push(std::move(std::make_pair<CharString, char*>(std::move(address), std::move(item))));
+    _toDPqueue.emplace(std::move(address), length, std::move(item));
 }
 
 //--------------------------------------------------------------------------------
@@ -355,60 +227,43 @@ PVSSboolean RAMS7200HWService::writeData(HWObject *objPtr)
           Common::Logger::globalWarning(__PRETTY_FUNCTION__, "No configuration handling for address:", CharString(objPtr->getAddress().c_str()) + ':' + CharString(e.what()));
       }
   }
-  else if (addressOptions.size() == ADDRESS_OPTIONS_SIZE) // Output
+  else if (addressOptions.size() == ADDRESS_OPTIONS_SIZE) // Send to PLC
   {
 
-    if(!addressOptions[ADDRESS_OPTIONS_IP].length())
+    if(!addressOptions[ADDRESS_OPTIONS_IP_COMBO].length())
     {
         Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Empty IP");
         return PVSS_FALSE;
     }
 
-    if(_facades.find(addressOptions[ADDRESS_OPTIONS_IP]) != _facades.end()){
-        if(!RAMS7200LibFacade::RAMS7200AddressIsValid(addressOptions[ADDRESS_OPTIONS_VAR])){
-          Common::Logger::globalWarning("Not a valid Var for address", objPtr->getAddress().c_str());
-          return PVSS_FALSE; 
-        }
-        else{
-          auto wrQueue = writeQueueForIP.find(addressOptions[ADDRESS_OPTIONS_IP]);
-          const auto length = (int)objPtr->getDlen();
-
-          if(length == 2) {
-            char* correctval = new char[sizeof(int16_t)];
-            std::memcpy(correctval, objPtr->getDataPtr(), sizeof(int16_t));
-
-            int16_t* checkVal = reinterpret_cast<int16_t*> (correctval);
-            int16_t inInt16 = *checkVal;
-
-            std::reverse(reinterpret_cast<char*>(&inInt16), reinterpret_cast<char*>(&inInt16) + sizeof(int16_t));
-
-            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write integer, Correct val is: ", std::to_string(inInt16).c_str());
-            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
-          } else if(length == 4){
-            char* correctval = new char[sizeof(float)];
-            std::memcpy(correctval, objPtr->getDataPtr(), sizeof(float));
-            
-            float* checkVal = reinterpret_cast<float*>(correctval);
-            float inFloat = *checkVal;
-
-            std::reverse(reinterpret_cast<char*>(&inFloat), reinterpret_cast<char*>(&inFloat) + sizeof(float));
-
-            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write float, Correct val is:  ", std::to_string(inFloat).c_str());
-            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
-          } else {
-            char* correctval = new char[length];
-            std::memcpy(correctval, objPtr->getDataPtr(), length);
-            Common::Logger::globalInfo(Common::Logger::L2, "Received request to write non integer/float: ", correctval);
-            wrQueue->second.emplace_back(std::make_pair(addressOptions[ADDRESS_OPTIONS_VAR], correctval));
-          }
-
-          Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Added write request to queue for Address: " + CharString(objPtr->getAddress()) + " : "+ CharString(objPtr->getInfo()) );
-        }
+    if(!Common::S7Utils::AddressIsValid(addressOptions[ADDRESS_OPTIONS_VAR])){
+      Common::Logger::globalWarning("Not a valid Var for address", objPtr->getAddress().c_str());
+      return PVSS_FALSE; 
     }
-    else{
-        Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Connection not found for IP: ", addressOptions[ADDRESS_OPTIONS_IP].c_str());
-        return PVSS_FALSE;
+
+    auto& mss = static_cast<RAMS7200HWMapper*>(DrvManager::getHWMapperPtr())->getRAMS7200MSs();
+    auto msIt = mss.find(addressOptions[ADDRESS_OPTIONS_IP_COMBO]);
+    if(msIt == mss.end()){
+      Common::Logger::globalWarning(__PRETTY_FUNCTION__,"Connection not found for IP: ", addressOptions[ADDRESS_OPTIONS_IP_COMBO].c_str());
+      return PVSS_FALSE;
     }
+
+    const auto length = static_cast<int>(objPtr->getDlen());
+    auto correctval = new char[length];
+    std::memcpy(correctval, objPtr->getDataPtr(), length);
+
+    if(length == 2) {
+      int16_t inInt16 = Common::Utils::CopyNSwapBytes<int16_t>(correctval);
+      Common::Logger::globalInfo(Common::Logger::L2, "Received request to write integer, Correct val is: ", std::to_string(inInt16).c_str());
+    } else if(length == 4){
+      float inFloat = Common::Utils::CopyNSwapBytes<float>(correctval);
+      Common::Logger::globalInfo(Common::Logger::L2, "Received request to write float, Correct val is:  ", std::to_string(inFloat).c_str());
+    } else {
+      Common::Logger::globalInfo(Common::Logger::L2, "Received request to write non integer/float: ", reinterpret_cast<const char*>(correctval), reinterpret_cast<const char*>(correctval) + length);
+    }
+
+    msIt->second.queuePLCItem(addressOptions[ADDRESS_OPTIONS_VAR], correctval);
+    Common::Logger::globalInfo(Common::Logger::L1,__PRETTY_FUNCTION__, "Added write request to queue for Address: " + CharString(objPtr->getAddress()) + " : "+ CharString(objPtr->getInfo()) );
   }
   else
   {
@@ -433,7 +288,4 @@ void handleSegfault(int signal_code){
 
     // restore and trigger default handle (to get the core dump)
     signal(signal_code, SIG_DFL);
-    kill(getpid(), signal_code);
-
-    exit(1);
 }

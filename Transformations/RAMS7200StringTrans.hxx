@@ -54,7 +54,7 @@ class RAMS7200StringTrans : public Transformation
     // Conversion from Hardware to PVSS
     virtual VariablePtr toVar(const PVSSchar *data, const PVSSuint dlen, const PVSSuint subix) const;
 private:
-    const static size_t _size = 1024 * 10;
+    const static size_t _size = 255;
 
 };
 

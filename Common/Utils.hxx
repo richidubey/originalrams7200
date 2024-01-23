@@ -23,6 +23,7 @@
 #include <future>
 #include <chrono>
 #include <iostream>
+#include <cstring>
 
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& iterable)
@@ -44,37 +45,10 @@ using std::endl;
 class Utils
 {
 public:
-    template <typename T>
-    static bool future_is_ready(const future<T>& fut)
-    {
-        bool ret = false;
-        try
-        {
-            future_status status;
-            status = fut.wait_for(std::chrono::milliseconds(0));
-            if (status == future_status::deferred) {
-                cout << "deferred\n";
-            } else if (status == future_status::timeout) {
-                cout << "timeout\n";
-            } else if (status == future_status::ready) {
-                cout << "ready!\n";
-                ret = true;
-            }
-            else
-            {
-                cout << " Ha!";
-            }
-        }
-        catch(exception& e)
-        {
-            ret = true;
-            cout << "No state" << endl;
-        }
-        return ret;
-    }
 
+    Utils() = delete;
 
-    static auto split(const std::string& str, char&& delimiter = '$') -> std::vector<std::string>
+    static auto split(const std::string& str, char delimiter = '$') -> std::vector<std::string>
     {
         std::vector<std::string> result;
         std::size_t previous = 0;
@@ -90,30 +64,29 @@ public:
         return result;
     }
 
-    static bool convertToInt(const std::string& str, int& out)
+    template <typename T>
+    static T CopyNSwapBytes(const T& value)
     {
-        bool ret = false;
-        try
-        {
-            out = std::stoi(str.c_str());
-            ret = true;
-        }
-        catch (std::exception& e)
-        {
-            std::cout << "Exception : " << e.what() << std::endl;
-            ret = false;
-        }
-
-        return ret;
+        T retVal;
+        std::memcpy(reinterpret_cast<void*>(&retVal), reinterpret_cast<const void*>(&value), sizeof(T));
+        std::reverse(reinterpret_cast<uint8_t*>(&retVal), reinterpret_cast<uint8_t*>(&retVal) + sizeof(T));
+        return retVal;
     }
-};
 
-
-class DataRAII
-{
+    template <typename T>
+    static T CopyNSwapBytes(const void* value)
+    {
+        return CopyNSwapBytes(*reinterpret_cast<const T*>(value));
+    }
+    
+    template <typename T>
+    static T CopyNSwapBytes(const char* value)
+    {
+        return CopyNSwapBytes(*static_cast<const T*>(static_cast<const void*>(value)));
+    }
+ 
 
 };
 
 }
-
 #endif // UTILS_HXX

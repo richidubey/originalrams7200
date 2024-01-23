@@ -6,7 +6,7 @@ project(
     LANGUAGES CXX
 )
 
-set(PROJECT_VERSION 2.4.dev)
+set(PROJECT_VERSION 2.4.0)
 
 configure_file(config.h.in configured/config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/configured)

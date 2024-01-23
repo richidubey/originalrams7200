@@ -15,8 +15,6 @@
 #ifndef RAMS7200LIBFACADE_HXX
 #define RAMS7200LIBFACADE_HXX
 
-#define OPERATION_READ 0
-#define OPERATION_WRITE 1
 #define OVERHEAD_READ_MESSAGE 13
 #define OVERHEAD_READ_VARIABLE 5
 #define OVERHEAD_WRITE_MESSAGE 12
@@ -37,10 +35,13 @@
 #include <unordered_set>
 #include <condition_variable>
 #include <mutex>
-#include "snap7.h"
+#include <thread>
 
-using consumeCallbackConsumer = std::function<void(const std::string& ip, const std::string& var, const std::string& pollTime, char* payload)>;
-using errorCallbackConsumer = std::function<void(const std::string& ip, int error,  const std::string& reason)>;
+#include "RAMS7200MS.hxx"
+#include "Common/Logger.hxx"
+
+
+using queueToDPCallback = std::function<void(const std::string& dp_address, uint16_t length, char* payload)>;
 
 /**
  * @brief The RAMS7200LibFacade class is a facade and encompasses all the consumer interaction with snap7
@@ -51,72 +52,53 @@ class RAMS7200LibFacade
 public:
     /**
      * @brief RAMS7200LibFacade constructor
-     * @param ip : the ip
-     * @param consumeCallbackConsumer : a callback that will be called for eached polled message
+     * @param RAMS7200MS & : const reference to the MS object
+     * @param queueToDPCallback : a callback that will be called after each poll
      * */
-    RAMS7200LibFacade(const std::string& ip, const std::string& tp_ip, consumeCallbackConsumer, errorCallbackConsumer);
-    void Disconnect();
+    RAMS7200LibFacade(RAMS7200MS& , queueToDPCallback);
+    
 
     RAMS7200LibFacade(const RAMS7200LibFacade&) = delete;
     RAMS7200LibFacade& operator=(const RAMS7200LibFacade&) = delete;
+    RAMS7200LibFacade(RAMS7200LibFacade&&) = delete;
+    RAMS7200LibFacade& operator=(RAMS7200LibFacade&&) = delete;
+    ~RAMS7200LibFacade() = default;
 
-    bool isInitialized(){return _initialized;}
-    void Poll(std::vector<std::pair<std::string, int>>&, std::chrono::time_point<std::chrono::steady_clock> loopStartTime);
-    void write(std::vector<std::pair<std::string, void * >>);
-    void clearLastWriteTimeList();
+    void Poll();
+    void WriteToPLC();
+    void EnsureConnection(bool reduSwitch);
+
     void Connect();
-    void Reconnect();
 
-
-    TS7DataItem RAMS7200Read(std::string RAMS7200Address, void* val);
-    // TS7DataItem* RAMS7200LibFacade::RAMS7200Read2(std::string RAMS7200Address1, void* val1, std::string RAMS7200Address2, void* val2);
-    void RAMS7200ReadN(std::vector<std::string> validVars, int N);
-    void RAMS7200ReadMaxN(std::vector <std::string> validVars, int N, int pdu_size, int VAR_OH, int MSG_OH);
-    void RAMS7200ReadWriteMaxN(std::vector <std::pair<std::string, void *>> validVars, uint N, int PDU_SZ, int VAR_OH, int MSG_OH, int rorw);
-    TS7DataItem RAMS7200Write(std::string RAMS7200Address, void* val);
-    static int getByteSizeFromAddress(std::string RAMS7200Address);
-    std::map<std::string, std::chrono::time_point<std::chrono::steady_clock> > lastWritePerAddress;
-    void RAMS7200MarkDeviceConnectionError(std::string, bool);
-    static TS7DataItem RAMS7200TS7DataItemFromAddress(std::string RAMS7200Address);
-
-    void markForNextRead(std::vector<std::pair<std::string, void *>> addresses, std::chrono::time_point<std::chrono::steady_clock> loopFirstStartTime);
-    
-    static bool RAMS7200AddressIsValid(const std::string& RAMS7200Address);
-    static int RAMS7200AddressGetWordLen(const std::string& RAMS7200Address);
-    static int RAMS7200AddressGetAmount(const std::string& RAMS7200Address);
-    
-    void startFileSharingThread();
-    void FileSharingTask(int port);
-
-    bool FSThreadRunning = false;
-    bool stopCurrentFSThread = false;
-    std::condition_variable CV_SwitchFSThread;
-    std::mutex mutex_;
-    int readFailures = 0; //allowed since C++11
-
-    bool touch_panel_conn_error = true; //Not connected initially
-    std::map <std::string, TS7DataItem> VarItems;
+    template <typename T>
+    void sleep_for(T duration)
+    {
+        std::unique_lock<std::mutex> lk(ms._threadMutex);
+        ms._threadCv.wait_for(lk, duration, [&](){
+           return !ms._run.load();     
+        });
+    }
 
 private:
-    //std::unique_ptr<Consumer> _consumer;
-    std::string _ip; 
-    std::string _tp_ip; 
-
-    consumeCallbackConsumer _consumeCB;
-    errorCallbackConsumer _errorCB;
-    bool _initialized{false};
-    std::unique_ptr<TS7Client>  _client;
-    static int RAMS7200AddressGetStart(std::string RAMS7200Address);
-    static int RAMS7200AddressGetArea(std::string RAMS7200Address);
-    static int RAMS7200AddressGetBit(std::string RAMS7200Address);
-    static int RAMS7200DataSizeByte(int WordLength);
-    static void RAMS7200DisplayTS7DataItem(PS7DataItem item);
-    TS7DataItem initializeIfMissVar(std::string);
-
-    void writeTouchConnErrDPE(bool);
-    int checkIfFSNeedsToStop();
+    struct dpItem
+    {
+        // DP info
+        const std::string dpAddress;
+        const int dpSize;
+    };
     
-    
+    void Reconnect();
+    void Disconnect();
+    void RAMS7200MarkDeviceConnectionError(bool);
+    void RAMS7200ReadWriteMaxN(std::vector<dpItem> dpItems, std::vector<TS7DataItem> items, const uint N, const int PDU_SZ, const int VAR_OH, const int MSG_OH, const Common::S7Utils::Operation rorw);
+
+    int ioFailures{0};
+    RAMS7200MS& ms;
+
+    // S7 related
+    queueToDPCallback _queueToDPCB;
+    bool _wasConnected{false};
+    std::unique_ptr<TS7Client> _client{nullptr};
 };
 
 #endif //RAMS7200LIBFACADE_HXX

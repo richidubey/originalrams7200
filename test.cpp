@@ -27,11 +27,14 @@
 |  Client Example                                                              |
 |                                                                              |
 |=============================================================================*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <cstring>
 #include "snap7.h"
+#include "Common/S7Utils.hxx"
+
 
 #ifdef OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
@@ -75,57 +78,7 @@ void Usage()
     printf("  client 192.168.1.101\n");
     getchar();
 }
-//------------------------------------------------------------------------------
-// hexdump, a very nice function, it's not mine.
-// I found it on the net somewhere some time ago... thanks to the author ;-)
-//------------------------------------------------------------------------------
-#ifndef HEXDUMP_COLS
-#define HEXDUMP_COLS 16
-#endif
-void hexdump(void *mem, unsigned int len)
-{
-        unsigned int i, j;
 
-        for(i = 0; i < len + ((len % HEXDUMP_COLS) ? (HEXDUMP_COLS - len % HEXDUMP_COLS) : 0); i++)
-        {
-                /* print offset */
-                if(i % HEXDUMP_COLS == 0)
-                {
-                        printf("0x%04x: ", i);
-                }
-
-                /* print hex data */
-                if(i < len)
-                {
-                        printf("%02x ", 0xFF & ((char*)mem)[i]);
-                }
-                else /* end of block, just aligning for ASCII dump */
-                {
-                        printf("   ");
-                }
-
-                /* print ASCII dump */
-                if(i % HEXDUMP_COLS == (HEXDUMP_COLS - 1))
-                {
-                        for(j = i - (HEXDUMP_COLS - 1); j <= i; j++)
-                        {
-                                if(j >= len) /* end of block, not really printing */
-                                {
-                                        putchar(' ');
-                                }
-                                else if(isprint((((char*)mem)[j] & 0x7F))) /* printable char */
-                                {
-                                        putchar(0xFF & ((char*)mem)[j]);
-                                }
-                                else /* other char */
-                                {
-                                        putchar('.');
-                                }
-                        }
-                        putchar('\n');
-                }
-        }
-}
 //------------------------------------------------------------------------------
 // Check error
 //------------------------------------------------------------------------------
@@ -153,190 +106,22 @@ bool Check(int Result, const char * function)
     return Result==0;
 }
 
-int RAMS7200AddressGetWordLen(std::string RAMS7200Address)
-{
-    if(RAMS7200Address.length() < 2){
-        return -1; //invalid
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b'){
-        return S7WLByte;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'w'){
-        return S7WLWord;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'd'){
-        return S7WLReal;
-    }
-    else{  //e.g.: V255.3
-        return S7WLBit;
-    }
-    return 0; //dummy
-}
-
-int RAMS7200AddressGetStart(std::string RAMS7200Address)
-{
-    if(RAMS7200Address.length() < 2){
-        return -1; //invalid
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b' || std::tolower((char) RAMS7200Address.at(1)) == 'w' || std::tolower((char) RAMS7200Address.at(1)) == 'd'){ //Addesses like XX9999
-        if(RAMS7200Address.find_first_of('.')  == std::string::npos){
-            return (int) std::stoi(RAMS7200Address.substr(2)); //e.g.:VB2978
-        }
-        else{
-            return (int) std::stoi(RAMS7200Address.substr(2, RAMS7200Address.find_first_of('.')-1)); //e.g.:VB2978.20
-        }
-    }
-    else{ //Addesses like X9999
-        if(RAMS7200Address.find_first_of('.')  == std::string::npos){
-            return -1; //invalid
-        }
-        else{
-            return (int) std::stoi(RAMS7200Address.substr(1, RAMS7200Address.find_first_of('.')-1)); //e.g.: V255.3
-        }
-    }
-    return 0; //dummy
-}
-
-int RAMS7200AddressGetArea(std::string RAMS7200Address)
-{
-    if(RAMS7200Address.length() < 2){
-        return -1; //invalid
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 'v'){ //Data Blocks
-        return S7AreaDB;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 'i' || std::tolower((char) RAMS7200Address.at(0)) == 'e'){ //Inputs
-        return S7AreaPE;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 'q' || std::tolower((char) RAMS7200Address.at(0)) == 'a'){ //Outputs
-        return S7AreaPA;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 'm' || std::tolower((char) RAMS7200Address.at(0)) == 'f'){ //Flag memory
-        return S7AreaMK;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 't'){ //Timers
-        return S7AreaTM;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(0)) == 'c' || std::tolower((char) RAMS7200Address.at(0)) == 'z'){ //Counters
-        return S7AreaCT;
-    }
-    return -1; //invalid
-}
-
-int RAMS7200AddressGetAmount(std::string RAMS7200Address)
-{
-    if(RAMS7200Address.length() < 2){
-        return 0;
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'b'){ //VB can be words or strings if it contains a '.'
-        if(RAMS7200Address.find_first_of('.') != std::string::npos){
-            return (int) std::stoi(RAMS7200Address.substr(RAMS7200Address.find('.')+1));
-        }
-        else{
-            return 1;
-        }
-    }
-    else if(std::tolower((char) RAMS7200Address.at(1)) == 'w' || std::tolower((char) RAMS7200Address.at(1)) == 'd'){
-        return 1;
-    }
-    else{ //bit addressing like V255.3
-        return 1;
-    }
-    return 0; //dummy
-}
-
-int RAMS7200AddressGetBit(std::string RAMS7200Address)
-{
-    if(RAMS7200Address.length() < 2){
-        return -1; //invalid
-    }
-    else if(RAMS7200AddressGetWordLen(RAMS7200Address) == S7WLBit && RAMS7200Address.find_first_of('.') != std::string::npos){
-        return (int) std::stoi(RAMS7200Address.substr(RAMS7200Address.find('.')+1));
-    }
-    else{
-        return 0; //N/A
-    }
-    return 0; //dummy
-}
-
-int RAMS7200DataSizeByte(int WordLength)
-{
-     switch (WordLength){
-          case S7WLBit     : return 1;  // S7 sends 1 byte per bit
-          case S7WLByte    : return 1;
-          case S7WLWord    : return 2;
-          case S7WLDWord   : return 4;
-          case S7WLReal    : return 4;
-          case S7WLCounter : return 2;
-          case S7WLTimer   : return 2;
-          default          : return 0;
-     }
-}
-
-void RAMS7200DisplayTS7DataItem(PS7DataItem item)
-{
-    //hexdump(item->pdata  , sizeof(item->pdata));
-    switch(item->WordLen){
-        case S7WLByte:
-            if(item->Amount>1){
-                std::string strVal( reinterpret_cast<char const*>(item->pdata));
-                printf("-->read valus as string :'%s'\n", strVal.c_str());
-            }
-            else{
-                uint8_t byteVal;
-                std::memcpy(&byteVal, item->pdata  , sizeof(uint8_t));
-                printf("-->read value as byte : %d\n", byteVal);
-            }
-            break;
-        case S7WLWord:
-            uint16_t wordVal;
-            std::memcpy(&wordVal, item->pdata  , sizeof(uint16_t));
-            printf("-->read value as word : %d\n", __bswap_16(wordVal));
-            break;
-        case S7WLReal:{
-                float realVal;
-                u_char f[] = { static_cast<byte*>(item->pdata)[3], static_cast<byte*>(item->pdata)[2], static_cast<byte*>(item->pdata)[1], static_cast<byte*>(item->pdata)[0]};
-                std::memcpy(&realVal, f, sizeof(float));
-                printf("-->read value as real : %.3f\n", realVal);
-            }
-            break;
-        case S7WLBit:
-            uint8_t bitVal;
-            std::memcpy(&bitVal, item->pdata  , sizeof(uint8_t));
-            printf("-->read value as bit : %d\n", bitVal);      
-            break;
-    }
-}
-
-TS7DataItem RAMS7200TS7DataItemFromAddress(std::string RAMS7200Address){
-    TS7DataItem item;
-    item.Area     = RAMS7200AddressGetArea(RAMS7200Address);
-    item.WordLen  = RAMS7200AddressGetWordLen(RAMS7200Address);
-    item.DBNumber = 1;
-    item.Start    = item.WordLen == S7WLBit ? (RAMS7200AddressGetStart(RAMS7200Address)*8)+RAMS7200AddressGetBit(RAMS7200Address) : RAMS7200AddressGetStart(RAMS7200Address);
-    item.Amount   = RAMS7200AddressGetAmount(RAMS7200Address);
-    item.pdata   = malloc(RAMS7200DataSizeByte(item.WordLen )*item.Amount);
-    return item;
-}
-
 TS7DataItem RAMS7200Read(std::string RAMS7200Address, void* val)
 {
-    TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
-    int memSize = (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
+    TS7DataItem item = Common::S7Utils::TS7DataItemFromAddress(RAMS7200Address, true);
+    int memSize = ( Common::S7Utils::DataSizeByte(item.WordLen )*item.Amount);
 
     printf("-------------read RAMS7200Address=>(Area, Start, WordLen, Amount): memSize : %s =>(%d, %d, %d, %d) : %dB", RAMS7200Address.c_str(), item.Area, item.Start, item.WordLen, item.Amount, memSize);
     
     if(Client->ReadMultiVars(&item, 1) == 0){
         if(item.WordLen == S7WLWord){
-            uint16_t wordVal;
-            std::memcpy(&wordVal, item.pdata, memSize);
-            wordVal = __bswap_16(wordVal);
+            uint16_t wordVal = Common::Utils::CopyNSwapBytes<uint16_t>(item.pdata);
             std::memcpy(val, &wordVal, memSize);
         }
         else{
             std::memcpy(val, item.pdata, memSize);
         }
-        RAMS7200DisplayTS7DataItem(&item);
+        printf(Common::S7Utils::DisplayTS7DataItem(&item, Common::S7Utils::Operation::READ).c_str());
     }
     else{
         printf("-->read NOK!\n");
@@ -346,12 +131,10 @@ TS7DataItem RAMS7200Read(std::string RAMS7200Address, void* val)
 
 TS7DataItem RAMS7200Write(std::string RAMS7200Address, void* val)
 {
-    TS7DataItem item = RAMS7200TS7DataItemFromAddress(RAMS7200Address);
-    int memSize = (RAMS7200DataSizeByte(item.WordLen )*item.Amount);
+    TS7DataItem item =  Common::S7Utils::TS7DataItemFromAddress(RAMS7200Address, true);
+    int memSize = ( Common::S7Utils::DataSizeByte(item.WordLen )*item.Amount);
     if(item.WordLen == S7WLWord){
-        uint16_t wordVal;
-        std::memcpy(&wordVal, val, memSize);
-        wordVal = __bswap_16(wordVal);
+        uint16_t wordVal = Common::Utils::CopyNSwapBytes<uint16_t>(val);
         std::memcpy(item.pdata , &wordVal , memSize);
     }
     else{
@@ -427,7 +210,7 @@ void PerformTests()
     };
 
     for(std::string address : addresses){
-        TS7DataItem item = RAMS7200TS7DataItemFromAddress(address);
+        TS7DataItem item =  Common::S7Utils::TS7DataItemFromAddress(address, true);
         switch (item.WordLen){
             case S7WLByte:
                 if(item.Amount >1){
@@ -538,8 +321,6 @@ void Summary()
     printf("| Performed : %d\n",(ok+ko));
     printf("| Passed    : %d\n",ok);
     printf("| Failed    : %d\n",ko);
-    printf("+----------------------------------------[press a key]\n");
-    getchar();
 }
 //------------------------------------------------------------------------------
 // Main              
@@ -576,97 +357,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
-
-/*
-void read(std::string RAMS7200Address)
-{
-    // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
-    int addressArea = RAMS7200AddressGetArea(RAMS7200Address);
-    int addressStart = RAMS7200AddressGetStart(RAMS7200Address);
-    int addressWordLen = RAMS7200AddressGetWordLen(RAMS7200Address);
-    int addressAmount = RAMS7200AddressGetAmount(RAMS7200Address);
-    int addressBit = RAMS7200AddressGetBit(RAMS7200Address);
-    byte mem[RAMS7200DataSizeByte(addressWordLen)*addressAmount];
-
-    printf("-------------read RAMS7200Address=>(addressArea, addressStart, addressWordLen, addressAmount, addressBit) : %s =>(%d, %d, %d, %d, %d)\n", RAMS7200Address.c_str(), addressArea, addressStart, addressWordLen, addressAmount, addressBit);
-
-    int res;
-    if(addressWordLen == S7WLBit){
-        res=Client->ReadArea(addressArea, 1, (addressStart*8)+addressBit, addressAmount, addressWordLen, &mem);
-    }
-    else{
-        res=Client->ReadArea(addressArea, 1, addressStart, addressAmount, addressWordLen, &mem);
-    }
-    //printf("read Result : %d\n", res);
-    //printf("sizeof(mem) : %d\n", sizeof(mem));
-    if (res==0){
-        //printf("hexdump:\n");
-        hexdump(mem, RAMS7200DataSizeByte(addressWordLen)*addressAmount);
-        u_char b[] = {mem[3],mem[2],mem[1],mem[0]};
-        switch(addressWordLen){
-            case S7WLByte:
-                if(addressAmount>1){
-                    std::string strVal( reinterpret_cast<char const*>(mem));
-                    printf("---------------------------------------------->read valus as string :'%s'\n", strVal.c_str());
-                }
-                else{
-                    uint8_t byteVal;
-                    std::memcpy(&byteVal, mem, sizeof(mem));
-                    printf("---------------------------------------------->read value as byte : %d\n", byteVal);
-                }
-                break;
-            case S7WLWord:
-                uint16_t wordVal;
-                std::memcpy(&wordVal, mem, sizeof(mem));
-                printf("---------------------------------------------->read value as word : %d\n", __bswap_16(wordVal));
-                break;
-            case S7WLReal:
-                float realVal;
-                std::memcpy(&realVal, b, sizeof(realVal));
-                printf("---------------------------------------------->read value as real : %.3f\n", realVal);
-                break;
-            case S7WLBit:
-                uint8_t bitVal;
-                std::memcpy(&bitVal, mem, sizeof(mem));
-                printf("---------------------------------------------->read value as bit : %d\n", bitVal);            
-                break;
-        }
-    }
-}
-*/
-
-//------------------------------------------------------------------------------
-//  Read RAMS7200
-//------------------------------------------------------------------------------
-/*
-void ReadRAMS7200()
-{
-    // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
-    uint16_t MB;
-    int res=Client->ReadArea(S7AreaDB, 1, 1984, 1, S7WLWord, &MB);
-    printf("Read VW1984 Result : %d\n",res);
-    if (res==0){
-        uint16_t MBswaped = (MB>>8) | (MB<<8);
-        printf("Read VW1984 value : %X\n", MBswaped);
-        printf("Read VW1984 value : %d\n", MBswaped);
-    }
-}
-*/
-
-//------------------------------------------------------------------------------
-//  Write RAMS7200
-//------------------------------------------------------------------------------
-
-// void WriteRAMS7200()
-// {
-//     // CHID1=WMS_172_18_130_170.WMS_172_18_130_170.VW1984=13220
-//     uint16_t MB = 13220;
-//     uint16_t MBswaped = (MB>>8) | (MB<<8);
-//     int res=Client->WriteArea(S7AreaDB, 1, 1984, 1, S7WLWord, &MBswaped);
-//     printf("Write VW1984 Result : %d\n",res);
-//     if (res==0){
-//         printf("Write VW1984 value : %X\n", MB);
-//         printf("Write VW1984 value : %d\n", MB);
-//     }
-// }
